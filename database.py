@@ -1,9 +1,8 @@
 from pymongo import MongoClient
 
-client = MongoClient('localhost', 27017)
-
-# Connect to our database
-db = client['testDB']
-
-# Fetch our series collection
-series_collection = db['test']
+class DataBase(dict):
+    def __init__(self,database,collection,connection=None,base_key='_id'):
+        self.client = MongoClient(connection)
+        self.db = self.client[database]
+        self.collection = self.db[collection]
+        self.base_key = base_key
