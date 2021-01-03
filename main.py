@@ -136,12 +136,12 @@ async def sugg(q, state: FSMContext):
                     [types.InlineKeyboardButton('Все показатели', callback_data='allsug')],
                 ]
             ))
-        await state.finish()
     elif q.data == "allsug":
         lst = []
         for i in sug[q.from_user.id]['sugers']:
             lst.append(str(i))
         await bot.send_message(chat_id=q.from_user.id, text=' | '.join(lst))
+    await state.finish()
 
 @dp.message_handler(state=Form.addsug)
 async def addsug(msg: types.Message, state: FSMContext):
