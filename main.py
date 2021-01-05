@@ -4,6 +4,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from database import DataBase
 import config
+from datetime import datetime
 
 bot = Bot(token=config.TOKEN)
 storage = MemoryStorage()
@@ -18,6 +19,19 @@ class Form(StatesGroup):
     units = State()
     addsug = State()
     sug = State()
+    clearsug = State()
+    deluser = State()
+    settings = State()
+
+
+class Mailing(StatesGroup):
+    do = State()
+    all = State()
+    insulins = State()
+    sex = State()
+    type = State()
+    units = State()
+    age = State()
 
 
 user = DataBase('users', 'users', config.MONGO_TOKEN, '_id')
@@ -50,6 +64,39 @@ async def delete_user(message: types.Message):
     user[message.from_user.id].delete_user()
     sug[message.from_user.id].delete_user()
     await message.answer("Пользователь успешно удален из базы данных!")
+
+
+@dp.message_handler(commands=['mailing'])
+async def mailing(msg: types.Message):
+    if (msg.from_user.id in config.ADMINS):
+        await Mailing.do.set()
+        await msg.answer('Выбирите тип рассылки',
+                         reply_markup=types.InlineKeyboardMarkup(
+                             inline_keyboard=[
+                                 [types.InlineKeyboardButton('Все', callback_data='all')],
+                                 [types.InlineKeyboardButton('Инсулин', callback_data='insulin')],
+                                 [types.InlineKeyboardButton('Пол', callback_data='sex')],
+                                 [types.InlineKeyboardButton('Тип', callback_data='type')],
+                                 [types.InlineKeyboardButton('Еденицы', callback_data='units')],
+                                 [types.InlineKeyboardButton('Возраст', callback_data='age')],
+                             ]
+                         ))
+
+
+@dp.callback_query_handler(state=Mailing.do)
+async def mailing_do(q: types.InlineQueryResult, state: FSMContext):
+    usrs = user[q.from_user.id].find()
+    if q.data == 'all':
+        for id in usrs:
+            await bot.send_message(chat_id=id['_id'], text=f'ALL TEST {str(datetime.now())}')
+    elif q.data == 'insulin':
+        ids = []
+        for i in usrs:
+            if 'Insu' in i['insulins'] or 'Insul' in i['insulins']:
+                ids.append(i['_id'])
+        for id in ids:
+            await bot.send_message(chat_id=id, text=f'INSULIN TEST {str(datetime.now())}')
+    await state.finish()
 
 
 @dp.message_handler(commands=['start'])
@@ -97,25 +144,120 @@ async def send_help(message: types.Message):
                 [types.InlineKeyboardButton('Добавить', callback_data='addsug')],
                 [types.InlineKeyboardButton('Средний показатель', callback_data='sugmid')],
                 [types.InlineKeyboardButton('Все показатели', callback_data='allsug')],
+                [types.InlineKeyboardButton('Отмена', callback_data='cancel')],
             ]
         ))
     elif message.text == "Информация":
-        await message.answer("Бот создан для ознакомления людей больных сахарным диабетом(далее пользователей) "
-                             "с полезной информацией собранной из разных источников. Создатели не несут отвественности "
-                             "за любый действия пользователей. Информация не является 100% достоверной. САМОЛЕЧЕНИЕ МОЖЕТ НАВРЕДИТЬ ВАШЕМУ ЗДОРОВЬЮ!",
+        await message.answer("""Бот создан для ознакомления людей больных сахарным диабетом(далее пользователей)
+с полезной информацией собранной из разных источников. 
+                             
+Создатели не несут отвественности
+за любый действия пользователей. Информация не является 100% достоверной. 
+                             
+                             
+САМОЛЕЧЕНИЕ МОЖЕТ НАВРЕДИТЬ ВАШЕМУ ЗДОРОВЬЮ!""",
                              reply_markup=types.InlineKeyboardMarkup(
                                             inline_keyboard=[
                                                 [types.InlineKeyboardButton('Создатель', url='https://t.me/tesla33IO')]
                                             ]
                                         ))
+    elif message.text == "Настройки":
+        await Form.settings.set()
+        await message.answer("Настройки пользователя",
+                             reply_markup=types.ReplyKeyboardMarkup(
+                                 keyboard=[
+                                     [types.KeyboardButton('Очистить показатели уровня сахара в крови')],
+                                     [types.KeyboardButton('Удалить аккаунт пользователя')],
+                                     [types.KeyboardButton('Назад')],
+                                 ]
+                             ))
+
+
+@dp.message_handler(state=Form.settings)
+async def settings(msg: types.Message, state: FSMContext):
+    txt = msg.text
+    if txt == 'Очистить показатели уровня сахара в крови':
+        await Form.clearsug.set()
+        await msg.answer(
+            'Вы действительно хотите удалить все показатели?\n\nВсе данные будут потеряны без возможности восстановления!',
+            reply_markup=types.InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [types.InlineKeyboardButton('Да, я уверенн(а)', callback_data='yes')],
+                    [types.InlineKeyboardButton('Нет, я передумал(а)', callback_data='no')],
+                ]
+            ))
+    elif txt == 'Удалить аккаунт пользователя':
+        await Form.deluser.set()
+        await msg.answer('Вы действительно хотите удалить аккаунт пользователя?\n\nВсе данные будут потеряны без возможности восстановления!',
+                         reply_markup=types.InlineKeyboardMarkup(
+                             inline_keyboard=[
+                                 [types.InlineKeyboardButton('Да, я уверенн(а)', callback_data='yes')],
+                                 [types.InlineKeyboardButton('Нет, я передумал(а)', callback_data='no')],
+                             ]
+                         ))
+    elif txt == 'Назад':
+        await state.finish()
+        await msg.answer('Меню',
+                               reply_markup=types.ReplyKeyboardMarkup(keyboard=[
+        [types.KeyboardButton(text="Статистика")],
+        [types.KeyboardButton(text="Сахар")],
+        [types.KeyboardButton(text="Настройки")],
+        [types.KeyboardButton(text="Информация")]
+    ]))
+
+
+@dp.callback_query_handler(state=Form.deluser)
+async def deluser(q: types.InlineQueryResult, state: FSMContext):
+    if q.data == 'yes':
+        await state.finish()
+        user[q.from_user.id].delete_user()
+        sug[q.from_user.id].delete_user()
+        await bot.send_message(chat_id=q.from_user.id, text="Пользователь успешно удален из базы данных! Для регистрации напишите /start")
+    elif q.data == 'no':
+        await state.finish()
+        await bot.send_message(chat_id=q.from_user.id, text='Операйия успешно отменена',
+                               reply_markup=types.ReplyKeyboardMarkup(keyboard=[
+        [types.KeyboardButton(text="Статистика")],
+        [types.KeyboardButton(text="Сахар")],
+        [types.KeyboardButton(text="Настройки")],
+        [types.KeyboardButton(text="Информация")]
+    ]))
+    else:
+        print("Error --- deluser")
+
+
+@dp.callback_query_handler(state=Form.clearsug)
+async def clearsug(q: types.InlineQueryResult, state: FSMContext):
+    if q.data == 'yes':
+        await state.finish()
+        sug[q.from_user.id]['sugers'] = {}
+        sug[q.from_user.id].save()
+        await bot.send_message(chat_id=q.from_user.id, text="Показатели успешно удалены",
+                               reply_markup=types.ReplyKeyboardMarkup(keyboard=[
+        [types.KeyboardButton(text="Статистика")],
+        [types.KeyboardButton(text="Сахар")],
+        [types.KeyboardButton(text="Настройки")],
+        [types.KeyboardButton(text="Информация")]
+    ]))
+    elif q.data == 'no':
+        await state.finish()
+        await bot.send_message(chat_id=q.from_user.id, text='Операйия успешно отменена',
+                               reply_markup=types.ReplyKeyboardMarkup(keyboard=[
+        [types.KeyboardButton(text="Статистика")],
+        [types.KeyboardButton(text="Сахар")],
+        [types.KeyboardButton(text="Настройки")],
+        [types.KeyboardButton(text="Информация")]
+    ]))
+    else:
+        print("Error --- clearsug")
 
 
 @dp.callback_query_handler(state=Form.sug)
 async def sugg(q, state: FSMContext):
     if q.data == 'addsug':
+        await Form.addsug.set()
         await bot.send_message(chat_id=q.from_user.id, text="Укажите уровень сахара в крови (Например: 3.5). "
                                                             "Для отмены действия, напишите *cancel*", parse_mode="Markdown")
-        await Form.addsug.set()
     elif q.data == "sugmid":
         try:
             lst = []
@@ -126,45 +268,64 @@ async def sugg(q, state: FSMContext):
                 result += j
             r = result / len(lst)
             await bot.send_message(chat_id=q.from_user.id, text="{:.1f}".format(r))
+            await state.finish()
         except ZeroDivisionError or TypeError:
             await bot.send_message(chat_id=q.from_user.id, text="У вас еще нет показателей.")
             await Form.sug.set()
             await bot.send_message(chat_id=q.from_user.id, text="Доступные команды", reply_markup=types.InlineKeyboardMarkup(
-                inline_keyboard=[
-                    [types.InlineKeyboardButton('Добавить', callback_data='addsug')],
-                    [types.InlineKeyboardButton('Средний показатель', callback_data='sugmid')],
-                    [types.InlineKeyboardButton('Все показатели', callback_data='allsug')],
-                ]
-            ))
+            inline_keyboard=[
+                [types.InlineKeyboardButton('Добавить', callback_data='addsug')],
+                [types.InlineKeyboardButton('Отмена', callback_data='cancel')],
+            ]
+        ))
     elif q.data == "allsug":
         lst = []
         for i in sug[q.from_user.id]['sugers']:
+            print(i)
             lst.append(str(i))
-        await bot.send_message(chat_id=q.from_user.id, text=' | '.join(lst))
-    await state.finish()
+        if len(lst) >= 1:
+            await bot.send_message(chat_id=q.from_user.id, text=' | '.join(lst))
+            await state.finish()
+        elif len(lst) <= 0:
+            await bot.send_message(chat_id=q.from_user.id, text="У вас еще нет показателей.")
+            await Form.sug.set()
+            await bot.send_message(chat_id=q.from_user.id, text="Доступные команды",
+                                   reply_markup=types.InlineKeyboardMarkup(
+                                       inline_keyboard=[
+                                           [types.InlineKeyboardButton('Добавить', callback_data='addsug')],
+                                           [types.InlineKeyboardButton('Отмена', callback_data='cancel')],
+                                       ]
+                                   ))
+        else:
+            print('Error --- sugg')
+            await state.finish()
+    elif q.data == "cancel":
+        await state.finish()
+        await bot.send_message(chat_id=q.from_user.id, text="Действие отменено")
+        pass
 
 @dp.message_handler(state=Form.addsug)
 async def addsug(msg: types.Message, state: FSMContext):
     try:
-        if msg.text == 'cancel':
+        suger = float(msg.text)
+        if (suger >= 1) and (suger <= 31):
+            s = sug[msg.from_user.id]['sugers']
+            s.append(suger)
+            sug[msg.from_user.id]['sugers'] = s
+            sug[msg.from_user.id].save()
+            await msg.answer("Показатель сохранен!")
+            await state.finish()
+        else:
+            await Form.addsug.set()
+            await msg.answer("Показатель указан неверно. Попробуйте еще раз")
+    except ValueError:
+        if msg.text == 'cancel' or msg.text == 'Cancel' or msg.text == 'Отмена' or msg.text == 'отмена':
             await state.finish()
             await msg.answer("Действие отменено")
             pass
         else:
-            suger = float(msg.text)
-            if (suger >= 1.0) and (suger <= 30.9):
-                s = sug[msg.from_user.id]['sugers']
-                s.append(suger)
-                sug[msg.from_user.id]['sugers'] = s
-                sug[msg.from_user.id].save()
-                await msg.answer("Показатель сохранен!")
-                await state.finish()
-            else:
-                await Form.addsug.set()
-                await msg.answer("Показатель указан неверно. Попробуйте еще раз")
-    except ValueError:
-        await Form.addsug.set()
-        await msg.answer("Показатель нужно указывать цифрами!")
+            await Form.addsug.set()
+            await msg.answer("Показатель нужно указывать цифрами!")
 
 
 @dp.callback_query_handler(lambda query: query.data == "male" or query.data == "female")
