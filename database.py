@@ -38,5 +38,10 @@ class MongoItem(dict):
     def delete_user(self):
         self.collection.delete_one({self.base_key: self[self.base_key]})
 
+    def find(self):
+        self.cursor = self.collection.find({})
+        return list(self.cursor)
+
     def load(self):
-        self.update(self.collection.find_one({self.base_key: self[self.base_key]}))
+        # self.update(self.collection.find_one({self.base_key: self[self.base_key]}))
+        return list(self.collection.find({}))
