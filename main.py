@@ -15,6 +15,8 @@ class Form(StatesGroup):
     weight = State()
     height = State()
     age = State()
+    sex = State()
+    typ = State()
     insulins = State()
     units = State()
     addsug = State()
@@ -105,6 +107,7 @@ async def mailing_do(q: types.InlineQueryResult, state: FSMContext):
 
 @dp.message_handler(commands=['start'])
 async def send_welcome(message: types.Message):
+    await Form.sex.set()
     await message.answer("Здравствуйте!\n"
                          "Я бот помощник для людей болеющих сахарным диабетом\n"
                          "Я могу предоставить вам разнообразную полезную информацию"
@@ -462,7 +465,7 @@ async def addsug(msg: types.Message, state: FSMContext):
             await msg.answer("Показатель нужно указывать цифрами!")
 
 
-@dp.callback_query_handler(lambda query: query.data == "male" or query.data == "female")
+@dp.callback_query_handler(lambda query: query.data == "male" or query.data == "female", state=Form.sex)
 async def set_sex(query):
     if query.data == "male":
         user[query.from_user.id]['sex'] = 'male'
@@ -478,11 +481,11 @@ async def set_sex(query):
         [types.InlineKeyboardButton('2', callback_data='type2')]
     ]
     kb = types.InlineKeyboardMarkup(inline_keyboard=btns)
-
+    await Form.typ.set()
     await bot.send_message(chat_id=query.from_user.id, text="Какой у вас тип диабета?", reply_markup=kb)
 
 
-@dp.callback_query_handler(lambda query: query.data == "type1" or query.data == "type2")
+@dp.callback_query_handler(lambda query: query.data == "type1" or query.data == "type2", state=Form.typ)
 async def set_type(query):
     if query.data == "type1":
         user[query.from_user.id]['type'] = 'type1'
