@@ -24,6 +24,8 @@ class Form(StatesGroup):
     settings = State()
     rate = State()
     question = State()
+    answer = State()
+    answersend = State()
 
 
 class Mailing(StatesGroup):
@@ -215,11 +217,19 @@ _{minsug}_
         await message.answer('Меня создал великолепный человек!'
                              '\nhttps://t.me/tesla33IO')
     elif message.text == '❓ Задать вопрос':
-        # await Form.question.set()
+        await Form.question.set()
         await message.answer('Задайте любые интересующие вас вопросы в одном сообщение.')
     elif message.text == '⭐ Оставить отзыв':
-        # await Form.rate.set()
-        await message.answer('Coming soon...')
+        await message.answer('На сколько вы бы оценили работу бота?',
+                             reply_markup=types.InlineKeyboardMarkup(
+                                 inline_keyboard=[
+                                     [types.InlineKeyboardButton('⭐', callback_data='rate1')],
+                                     [types.InlineKeyboardButton('⭐⭐', callback_data='rate2')],
+                                     [types.InlineKeyboardButton('⭐⭐⭐', callback_data='rate3')],
+                                     [types.InlineKeyboardButton('⭐⭐⭐⭐', callback_data='rate4')],
+                                     [types.InlineKeyboardButton('⭐⭐⭐⭐⭐', callback_data='rate5')],
+                                 ]
+                             ))
     elif message.text == '🔙 Назад':
         await message.answer('Меню',
                          reply_markup=types.ReplyKeyboardMarkup(keyboard=[
@@ -228,6 +238,53 @@ _{minsug}_
                              [types.KeyboardButton(text="⚙ Настройки")],
                              [types.KeyboardButton(text="ℹ Информация")]
                          ]))
+
+
+@dp.message_handler(state=Form.question)
+async def question(msg: types.Message, state: FSMContext):
+    question = msg.text
+    await bot.send_message(chat_id=614259495, text=f'{question}'
+                                                   f'\n\nID: {msg.from_user.id}\n'
+                                                   f'Username: {msg.from_user.username}\n'
+                                                   f'Time: {datetime.now()}', reply_markup=types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [types.InlineKeyboardButton('Ответить', callback_data='answer')],
+            [types.InlineKeyboardButton('Закрыть', callback_data='close')],
+        ]
+    ))
+    await msg.answer('Ваш вопрос доставлен моим администраторам, они его рассмотрят и постараются дать ответ.'
+                     'Будьте терпеливыми.')
+    await state.finish()
+
+
+@dp.callback_query_handler()
+async def answer(q, state: FSMContext):
+    if q.data == 'answer':
+        await Form.answersend.set()
+        await bot.send_message(chat_id=q.from_user.id, text='Пришлите ответ одним сообщением.'
+                                                            'Например:')
+        await bot.send_message(chat_id=q.from_user.id, text='123401234|В сообщение нужно указать таким образом ID пользователя'
+                                                            'задавшего вопрос и сам ответ')
+    elif q.data == 'close':
+        await state.finish()
+        await bot.send_message(chat_id=q.from_user.id, text='Вопрос был закрыт.')
+    elif q.data == 'rate1' or q.data == 'rate2' or q.data == 'rate3' or q.data == 'rate4' or q.data == 'rate5':
+        await bot.send_message(chat_id=614259495, text=f'Rating: {q.data[-1]}'
+                                                       f'\n\nID: {q.from_user.id}\n'
+                                                       f'Username: {q.from_user.username}\n'
+                                                       f'Time: {datetime.now()}')
+        await bot.send_message(chat_id=q.from_user.id, text='Спасибо за отзыв!')
+        await state.finish()
+
+
+@dp.message_handler(state=Form.answersend)
+async def sendans(msg: types.Message, state: FSMContext):
+    try:
+        uid = msg.text.split('|')
+        await bot.send_message(chat_id=uid[0], text='На ваш вопрос был дан следующий ответ: '+uid[1])
+        await state.finish()
+    except Exception as e:
+        await bot.send_message(chat_id=614259495, text=str(e) + '\n\nПопробуйте еще раз')
 
 
 @dp.message_handler(state=Form.settings)
