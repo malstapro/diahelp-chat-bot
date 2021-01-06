@@ -22,6 +22,8 @@ class Form(StatesGroup):
     clearsug = State()
     deluser = State()
     settings = State()
+    rate = State()
+    question = State()
 
 
 class Mailing(StatesGroup):
@@ -123,31 +125,66 @@ async def send_welcome(message: types.Message):
 
 @dp.message_handler(content_types=['text'])
 async def send_help(message: types.Message):
-    if message.text == "Статистика":
+    if message.text == "📊 Статистика":
         usr = user[message.from_user.id]
-        sex = "Мужчина" if usr['sex'] == 'male' else "Женщина"
+        sex = "👨" if usr['sex'] == 'male' else "👧"
         typ = "Сахарный диабет 1 типа" if usr['type'] == 'type1' else "Сахарный диабет 2 типа"
         units = "мг/дл" if usr['units'] == 'mg' else "ммоль/л"
+        maxsug = 0
+        midsug = 0
+        minsug = 630.63
+        try:
+            for i in sug[message.from_user.id]['sugers']:
+                if i > maxsug:
+                    maxsug = i
+                if i < minsug:
+                    minsug = i
+            if maxsug == 0:
+                maxsug = 'У вас еще нет показателей.'
+            if minsug == 35:
+                minsug = 'У вас еще нет показателей.'
+            lst = []
+            result = 0
+            for i in sug[message.from_user.id]['sugers']:
+                lst.append(float(i))
+            for j in lst:
+                result += j
+            midsug = '{:.1f}'.format(result / len(lst))
+        except ZeroDivisionError or TypeError:
+            midsug = 'У вас еще нет показателей.'
         await message.answer(f"""
-Пол: {sex}
-{typ}
-Возраст: {usr['age']}  лет(года)
-Вес: {usr['weight']} кг
-Рост: {usr['height']} см
-Инсулины: {','.join(usr['insulins'])}
-Еденицы измерения: {units}
-        """)
-    elif message.text == "Сахар":
+🔸 Пол: {sex}
+🔸 {typ}
+🔸 Возраст: _{usr['age']}_
+🔸 Вес: _{usr['weight']} кг_
+🔸 Рост: _{usr['height']} см_
+
+🔸 Инсулины:
+_{' | '.join(usr['insulins'])}_
+
+🔸 Еденицы измерения:
+_{units}_
+
+🔸 Максимальный уровень сахара в крови:
+_{maxsug}_
+
+🔸 Средний уровень сахара в крови:
+_{midsug}_
+
+🔸 Минимальный уровень сахара в крови:
+_{minsug}_
+        """, parse_mode='Markdown')
+    elif message.text == "🍬 Сахар":
         await Form.sug.set()
-        await message.answer("Доступные команды", reply_markup=types.InlineKeyboardMarkup(
-            inline_keyboard=[
-                [types.InlineKeyboardButton('Добавить', callback_data='addsug')],
-                [types.InlineKeyboardButton('Средний показатель', callback_data='sugmid')],
-                [types.InlineKeyboardButton('Все показатели', callback_data='allsug')],
-                [types.InlineKeyboardButton('Отмена', callback_data='cancel')],
+        await message.answer("Доступные команды", reply_markup=types.ReplyKeyboardMarkup(
+            keyboard=[
+                [types.KeyboardButton('➕ Добавить')],
+                [types.KeyboardButton('🔘 Средний показатель')],
+                [types.KeyboardButton('🔘 Все показатели')],
+                [types.KeyboardButton('🔙 Отмена')],
             ]
         ))
-    elif message.text == "Информация":
+    elif message.text == "ℹ Информация":
         await message.answer("""Бот создан для ознакомления людей больных сахарным диабетом(далее пользователей)
 с полезной информацией собранной из разных источников. 
                              
@@ -156,12 +193,15 @@ async def send_help(message: types.Message):
                              
                              
 САМОЛЕЧЕНИЕ МОЖЕТ НАВРЕДИТЬ ВАШЕМУ ЗДОРОВЬЮ!""",
-                             reply_markup=types.InlineKeyboardMarkup(
-                                            inline_keyboard=[
-                                                [types.InlineKeyboardButton('Создатель', url='https://t.me/tesla33IO')]
+                             reply_markup=types.ReplyKeyboardMarkup(
+                                            keyboard=[
+                                                [types.KeyboardButton('👤 Создатель')],
+                                                [types.KeyboardButton('❓ Задать вопрос')],
+                                                [types.KeyboardButton('⭐ Оставить отзыв')],
+                                                [types.KeyboardButton('🔙 Назад')],
                                             ]
                                         ))
-    elif message.text == "Настройки":
+    elif message.text == "⚙ Настройки":
         await Form.settings.set()
         await message.answer("Настройки пользователя",
                              reply_markup=types.ReplyKeyboardMarkup(
@@ -171,6 +211,23 @@ async def send_help(message: types.Message):
                                      [types.KeyboardButton('Назад')],
                                  ]
                              ))
+    elif message.text == '👤 Создатель':
+        await message.answer('Меня создал великолепный человек!'
+                             '\nhttps://t.me/tesla33IO')
+    elif message.text == '❓ Задать вопрос':
+        # await Form.question.set()
+        await message.answer('Задайте любые интересующие вас вопросы в одном сообщение.')
+    elif message.text == '⭐ Оставить отзыв':
+        # await Form.rate.set()
+        await message.answer('Coming soon...')
+    elif message.text == '🔙 Назад':
+        await message.answer('Меню',
+                         reply_markup=types.ReplyKeyboardMarkup(keyboard=[
+                             [types.KeyboardButton(text="📊 Статистика")],
+                             [types.KeyboardButton(text="🍬 Сахар")],
+                             [types.KeyboardButton(text="⚙ Настройки")],
+                             [types.KeyboardButton(text="ℹ Информация")]
+                         ]))
 
 
 @dp.message_handler(state=Form.settings)
@@ -199,10 +256,10 @@ async def settings(msg: types.Message, state: FSMContext):
         await state.finish()
         await msg.answer('Меню',
                                reply_markup=types.ReplyKeyboardMarkup(keyboard=[
-        [types.KeyboardButton(text="Статистика")],
-        [types.KeyboardButton(text="Сахар")],
-        [types.KeyboardButton(text="Настройки")],
-        [types.KeyboardButton(text="Информация")]
+        [types.KeyboardButton(text="📊 Статистика")],
+        [types.KeyboardButton(text="🍬 Сахар")],
+        [types.KeyboardButton(text="⚙ Настройки")],
+        [types.KeyboardButton(text="ℹ Информация")]
     ]))
 
 
@@ -217,10 +274,10 @@ async def deluser(q: types.InlineQueryResult, state: FSMContext):
         await state.finish()
         await bot.send_message(chat_id=q.from_user.id, text='Операйия успешно отменена',
                                reply_markup=types.ReplyKeyboardMarkup(keyboard=[
-        [types.KeyboardButton(text="Статистика")],
-        [types.KeyboardButton(text="Сахар")],
-        [types.KeyboardButton(text="Настройки")],
-        [types.KeyboardButton(text="Информация")]
+        [types.KeyboardButton(text="📊 Статистика")],
+        [types.KeyboardButton(text="🍬 Сахар")],
+        [types.KeyboardButton(text="⚙ Настройки")],
+        [types.KeyboardButton(text="ℹ Информация")]
     ]))
     else:
         print("Error --- deluser")
@@ -234,81 +291,101 @@ async def clearsug(q: types.InlineQueryResult, state: FSMContext):
         sug[q.from_user.id].save()
         await bot.send_message(chat_id=q.from_user.id, text="Показатели успешно удалены",
                                reply_markup=types.ReplyKeyboardMarkup(keyboard=[
-        [types.KeyboardButton(text="Статистика")],
-        [types.KeyboardButton(text="Сахар")],
-        [types.KeyboardButton(text="Настройки")],
-        [types.KeyboardButton(text="Информация")]
+        [types.KeyboardButton(text="📊 Статистика")],
+        [types.KeyboardButton(text="🍬 Сахар")],
+        [types.KeyboardButton(text="⚙ Настройки")],
+        [types.KeyboardButton(text="ℹ Информация")]
     ]))
     elif q.data == 'no':
         await state.finish()
         await bot.send_message(chat_id=q.from_user.id, text='Операйия успешно отменена',
                                reply_markup=types.ReplyKeyboardMarkup(keyboard=[
-        [types.KeyboardButton(text="Статистика")],
-        [types.KeyboardButton(text="Сахар")],
-        [types.KeyboardButton(text="Настройки")],
-        [types.KeyboardButton(text="Информация")]
+        [types.KeyboardButton(text="📊 Статистика")],
+        [types.KeyboardButton(text="🍬 Сахар")],
+        [types.KeyboardButton(text="⚙ Настройки")],
+        [types.KeyboardButton(text="ℹ Информация")]
     ]))
     else:
         print("Error --- clearsug")
 
 
-@dp.callback_query_handler(state=Form.sug)
-async def sugg(q, state: FSMContext):
-    if q.data == 'addsug':
+@dp.message_handler(state=Form.sug)
+async def sugg(msg: types.Message, state: FSMContext):
+    if msg.text == '➕ Добавить':
         await Form.addsug.set()
-        await bot.send_message(chat_id=q.from_user.id, text="Укажите уровень сахара в крови (Например: 3.5). "
+        await msg.answer("Укажите уровень сахара в крови (Например: 3.5). "
                                                             "Для отмены действия, напишите *cancel*", parse_mode="Markdown")
-    elif q.data == "sugmid":
+    elif msg.text == "🔘 Средний показатель":
         try:
             lst = []
             result = 0
-            for i in sug[q.from_user.id]['sugers']:
+            for i in sug[msg.from_user.id]['sugers']:
                 lst.append(float(i))
             for j in lst:
                 result += j
             r = result / len(lst)
-            await bot.send_message(chat_id=q.from_user.id, text="{:.1f}".format(r))
+            await msg.answer('🔹 '+"{:.1f}".format(r)+' 🔹')
             await state.finish()
         except ZeroDivisionError or TypeError:
-            await bot.send_message(chat_id=q.from_user.id, text="У вас еще нет показателей.")
+            await msg.answer("У вас еще нет показателей.")
             await Form.sug.set()
-            await bot.send_message(chat_id=q.from_user.id, text="Доступные команды", reply_markup=types.InlineKeyboardMarkup(
-            inline_keyboard=[
-                [types.InlineKeyboardButton('Добавить', callback_data='addsug')],
-                [types.InlineKeyboardButton('Отмена', callback_data='cancel')],
+            await msg.answer("Доступные команды", reply_markup=types.ReplyKeyboardMarkup(
+            keyboard=[
+                [types.KeyboardButton('➕ Добавить')],
+                [types.KeyboardButton('🔙 Отмена')],
             ]
         ))
-    elif q.data == "allsug":
+    elif msg.text == "🔘 Все показатели":
         lst = []
-        for i in sug[q.from_user.id]['sugers']:
-            print(i)
+        for i in sug[msg.from_user.id]['sugers']:
             lst.append(str(i))
         if len(lst) >= 1:
-            await bot.send_message(chat_id=q.from_user.id, text=' | '.join(lst))
-            await state.finish()
-        elif len(lst) <= 0:
-            await bot.send_message(chat_id=q.from_user.id, text="У вас еще нет показателей.")
+            await msg.answer('🔹 ' + ' | '.join(lst) + ' 🔹')
             await Form.sug.set()
-            await bot.send_message(chat_id=q.from_user.id, text="Доступные команды",
-                                   reply_markup=types.InlineKeyboardMarkup(
-                                       inline_keyboard=[
-                                           [types.InlineKeyboardButton('Добавить', callback_data='addsug')],
-                                           [types.InlineKeyboardButton('Отмена', callback_data='cancel')],
-                                       ]
-                                   ))
+            await msg.answer("Доступные команды",
+                             reply_markup=types.ReplyKeyboardMarkup(
+                                 keyboard=[
+                                     [types.KeyboardButton('➕ Добавить')],
+                                     [types.KeyboardButton('🔙 Отмена')],
+                                 ]
+                             ))
+        elif len(lst) <= 0:
+            await msg.answer("У вас еще нет показателей.")
+            await Form.sug.set()
+            await msg.answer("Доступные команды",
+                                   reply_markup=types.ReplyKeyboardMarkup(
+            keyboard=[
+                [types.KeyboardButton('➕ Добавить')],
+                [types.KeyboardButton('🔙 Отмена')],
+            ]
+        ))
         else:
             print('Error --- sugg')
             await state.finish()
-    elif q.data == "cancel":
+    elif msg.text == "🔙 Отмена":
         await state.finish()
-        await bot.send_message(chat_id=q.from_user.id, text="Действие отменено")
+        await msg.answer("Меню",
+                               reply_markup=types.ReplyKeyboardMarkup(keyboard=[
+        [types.KeyboardButton(text="📊 Статистика")],
+        [types.KeyboardButton(text="🍬 Сахар")],
+        [types.KeyboardButton(text="⚙ Настройки")],
+        [types.KeyboardButton(text="ℹ Информация")]
+    ]))
         pass
 
 @dp.message_handler(state=Form.addsug)
 async def addsug(msg: types.Message, state: FSMContext):
     try:
         suger = float(msg.text)
-        if (suger >= 1) and (suger <= 31):
+        max = 0
+        min = 0
+        if (user[msg.from_user.id]['units'] == 'mol'):
+            max = 35
+            min = 1
+        elif (user[msg.from_user.id]['units'] == 'mg'):
+            max = 630.63
+            min = 18.02
+        if (suger >= min) and (suger <= max):
             s = sug[msg.from_user.id]['sugers']
             s.append(suger)
             sug[msg.from_user.id]['sugers'] = s
@@ -365,7 +442,6 @@ async def set_type(query):
 
 @dp.callback_query_handler(lambda query: query.data == "units_mg" or query.data == "units_mol", state=Form.units)
 async def set_units(query, state: FSMContext):
-    print("set units b")
     if query.data == "units_mg":
         user[query.from_user.id]['units'] = 'mg'
         user[query.from_user.id].save()
@@ -376,10 +452,10 @@ async def set_units(query, state: FSMContext):
         print("Error -- setunits -- query!")
     await state.finish()
     kb = types.ReplyKeyboardMarkup(keyboard=[
-        [types.KeyboardButton(text="Статистика")],
-        [types.KeyboardButton(text="Сахар")],
-        [types.KeyboardButton(text="Настройки")],
-        [types.KeyboardButton(text="Информация")]
+        [types.KeyboardButton(text="📊 Статистика")],
+        [types.KeyboardButton(text="🍬 Сахар")],
+        [types.KeyboardButton(text="⚙ Настройки")],
+        [types.KeyboardButton(text="ℹ Информация")]
     ])
     await bot.send_message(chat_id=query.from_user.id, text="Регистрация успешно завершена!", reply_markup=kb)
 
