@@ -28,6 +28,8 @@ class Form(StatesGroup):
     question = State()
     answer = State()
     answersend = State()
+    mgtomol = State()
+    moltomg = State()
 
 
 class Mailing(StatesGroup):
@@ -70,6 +72,18 @@ async def delete_user(message: types.Message):
     user[message.from_user.id].delete_user()
     sug[message.from_user.id].delete_user()
     await message.answer("Пользователь успешно удален из базы данных!")
+
+
+@dp.message_handler(commands=['menu','меню'])
+async def menu(msg: types.Message, state: FSMContext):
+    await state.finish()
+    await msg.answer('Меню',
+                         reply_markup=types.ReplyKeyboardMarkup(keyboard=[
+                             [types.KeyboardButton(text="📊 Статистика")],
+                             [types.KeyboardButton(text="🍬 Сахар")],
+                             [types.KeyboardButton(text="⚙ Настройки")],
+                             [types.KeyboardButton(text="ℹ Информация")]
+                         ]))
 
 
 @dp.message_handler(commands=['mailing'])
@@ -146,7 +160,7 @@ async def send_help(message: types.Message):
                     minsug = i
             if maxsug == 0:
                 maxsug = 'У вас еще нет показателей.'
-            if minsug == 35:
+            if minsug == 630.63:
                 minsug = 'У вас еще нет показателей.'
             lst = []
             result = 0
@@ -180,13 +194,17 @@ _{midsug}_
 _{minsug}_
         """, parse_mode='Markdown')
     elif message.text == "🍬 Сахар":
+        # мг / дл
+        # ммоль / л
         await Form.sug.set()
         await message.answer("Доступные команды", reply_markup=types.ReplyKeyboardMarkup(
             keyboard=[
                 [types.KeyboardButton('➕ Добавить')],
                 [types.KeyboardButton('🔘 Средний показатель')],
                 [types.KeyboardButton('🔘 Все показатели')],
-                [types.KeyboardButton('🔙 Отмена')],
+                [types.KeyboardButton('🔘 Из мг/дл в ммоль/л')],
+                [types.KeyboardButton('🔘 Из ммоль/л в мг/дл')],
+                [types.KeyboardButton('🔙 Назад')],
             ]
         ))
     elif message.text == "ℹ Информация":
@@ -246,7 +264,7 @@ _{minsug}_
 @dp.message_handler(state=Form.question)
 async def question(msg: types.Message, state: FSMContext):
     question = msg.text
-    await bot.send_message(chat_id=614259495, text=f'{question}'
+    await bot.send_message(chat_id=-1001388451272, text=f'{question}'
                                                    f'\n\nID: {msg.from_user.id}\n'
                                                    f'Username: {msg.from_user.username}\n'
                                                    f'Time: {datetime.now()}', reply_markup=types.InlineKeyboardMarkup(
@@ -264,15 +282,15 @@ async def question(msg: types.Message, state: FSMContext):
 async def answer(q, state: FSMContext):
     if q.data == 'answer':
         await Form.answersend.set()
-        await bot.send_message(chat_id=q.from_user.id, text='Пришлите ответ одним сообщением.'
+        await bot.send_message(chat_id=-1001388451272, text='Пришлите ответ одним сообщением.'
                                                             'Например:')
-        await bot.send_message(chat_id=q.from_user.id, text='123401234|В сообщение нужно указать таким образом ID пользователя'
+        await bot.send_message(chat_id=-1001388451272, text='123401234|В сообщение нужно указать таким образом ID пользователя'
                                                             'задавшего вопрос и сам ответ')
     elif q.data == 'close':
         await state.finish()
-        await bot.send_message(chat_id=q.from_user.id, text='Вопрос был закрыт.')
+        await bot.send_message(chat_id=-1001388451272, text='Вопрос был закрыт.')
     elif q.data == 'rate1' or q.data == 'rate2' or q.data == 'rate3' or q.data == 'rate4' or q.data == 'rate5':
-        await bot.send_message(chat_id=614259495, text=f'Rating: {q.data[-1]}'
+        await bot.send_message(chat_id=-1001388451272, text=f'Rating: {q.data[-1]}'
                                                        f'\n\nID: {q.from_user.id}\n'
                                                        f'Username: {q.from_user.username}\n'
                                                        f'Time: {datetime.now()}')
@@ -287,7 +305,7 @@ async def sendans(msg: types.Message, state: FSMContext):
         await bot.send_message(chat_id=uid[0], text='На ваш вопрос был дан следующий ответ: '+uid[1])
         await state.finish()
     except Exception as e:
-        await bot.send_message(chat_id=614259495, text=str(e) + '\n\nПопробуйте еще раз')
+        await bot.send_message(chat_id=-1001388451272, text=str(e) + '\n\nПопробуйте еще раз')
 
 
 @dp.message_handler(state=Form.settings)
@@ -385,14 +403,24 @@ async def sugg(msg: types.Message, state: FSMContext):
                 result += j
             r = result / len(lst)
             await msg.answer('🔹 '+"{:.1f}".format(r)+' 🔹')
-            await state.finish()
+            await Form.sug.set()
+            await msg.answer("Доступные команды",
+                             reply_markup=types.ReplyKeyboardMarkup(
+                                 keyboard=[
+                                     [types.KeyboardButton('➕ Добавить')],
+                                     [types.KeyboardButton('🔘 Все показатели')],
+                                     [types.KeyboardButton('🔘 Из мг/дл в ммоль/л')],
+                                     [types.KeyboardButton('🔘 Из ммоль/л в мг/дл')],
+                                     [types.KeyboardButton('🔙 Назад')],
+                                 ]
+                             ))
         except ZeroDivisionError or TypeError:
             await msg.answer("У вас еще нет показателей.")
             await Form.sug.set()
             await msg.answer("Доступные команды", reply_markup=types.ReplyKeyboardMarkup(
             keyboard=[
                 [types.KeyboardButton('➕ Добавить')],
-                [types.KeyboardButton('🔙 Отмена')],
+                [types.KeyboardButton('🔙 Назад')],
             ]
         ))
     elif msg.text == "🔘 Все показатели":
@@ -406,7 +434,10 @@ async def sugg(msg: types.Message, state: FSMContext):
                              reply_markup=types.ReplyKeyboardMarkup(
                                  keyboard=[
                                      [types.KeyboardButton('➕ Добавить')],
-                                     [types.KeyboardButton('🔙 Отмена')],
+                                     [types.KeyboardButton('🔘 Средний показатель')],
+                                     [types.KeyboardButton('🔘 Из мг/дл в ммоль/л')],
+                                     [types.KeyboardButton('🔘 Из ммоль/л в мг/дл')],
+                                     [types.KeyboardButton('🔙 Назад')],
                                  ]
                              ))
         elif len(lst) <= 0:
@@ -416,13 +447,19 @@ async def sugg(msg: types.Message, state: FSMContext):
                                    reply_markup=types.ReplyKeyboardMarkup(
             keyboard=[
                 [types.KeyboardButton('➕ Добавить')],
-                [types.KeyboardButton('🔙 Отмена')],
+                [types.KeyboardButton('🔙 Назад')],
             ]
         ))
         else:
             print('Error --- sugg')
             await state.finish()
-    elif msg.text == "🔙 Отмена":
+    elif msg.text == "🔘 Из мг/дл в ммоль/л":
+        await Form.mgtomol.set()
+        await msg.answer('Укажите показатель в мг/дл:')
+    elif msg.text == "🔘 Из ммоль/л в мг/дл":
+        await Form.moltomg.set()
+        await msg.answer('Укажите показатель в ммоль/л:')
+    elif msg.text == "🔙 Назад":
         await state.finish()
         await msg.answer("Меню",
                                reply_markup=types.ReplyKeyboardMarkup(keyboard=[
@@ -431,7 +468,68 @@ async def sugg(msg: types.Message, state: FSMContext):
         [types.KeyboardButton(text="⚙ Настройки")],
         [types.KeyboardButton(text="ℹ Информация")]
     ]))
-        pass
+
+
+@dp.message_handler(state=Form.mgtomol)
+async def mgtomol(msg: types.Message, state: FSMContext):
+    try:
+        mg = float(msg.text)
+        r = mg / 18
+        await Form.sug.set()
+        await msg.answer(f"{mg} мг/дл " + "≈ {:.1f} ммоль/л".format(r), reply_markup=types.ReplyKeyboardMarkup(
+            keyboard=[
+                [types.KeyboardButton('➕ Добавить')],
+                [types.KeyboardButton('🔘 Средний показатель')],
+                [types.KeyboardButton('🔘 Все показатели')],
+                [types.KeyboardButton('🔘 Из мг/дл в ммоль/л')],
+                [types.KeyboardButton('🔘 Из ммоль/л в мг/дл')],
+                [types.KeyboardButton('🔙 Назад')],
+            ]
+        ))
+    except Exception as e:
+        await Form.sug.set()
+        await msg.answer('Вы допустили ошибку!', reply_markup=types.ReplyKeyboardMarkup(
+            keyboard=[
+                [types.KeyboardButton('➕ Добавить')],
+                [types.KeyboardButton('🔘 Средний показатель')],
+                [types.KeyboardButton('🔘 Все показатели')],
+                [types.KeyboardButton('🔘 Из мг/дл в ммоль/л')],
+                [types.KeyboardButton('🔘 Из ммоль/л в мг/дл')],
+                [types.KeyboardButton('🔙 Назад')],
+            ]
+        ))
+
+
+@dp.message_handler(state=Form.moltomg)
+async def moltomg(msg: types.Message, state: FSMContext):
+    try:
+        mol = float(msg.text)
+        r = mol * 18
+        await Form.sug.set()
+        await msg.answer(f"{mol} ммоль/л " + "≈ {:.2f} мг/дл".format(r), reply_markup=types.ReplyKeyboardMarkup(
+            keyboard=[
+                [types.KeyboardButton('➕ Добавить')],
+                [types.KeyboardButton('🔘 Средний показатель')],
+                [types.KeyboardButton('🔘 Все показатели')],
+                [types.KeyboardButton('🔘 Из мг/дл в ммоль/л')],
+                [types.KeyboardButton('🔘 Из ммоль/л в мг/дл')],
+                [types.KeyboardButton('🔙 Назад')],
+            ]
+        ))
+    except Exception as e:
+        await Form.sug.set()
+        await msg.answer('Вы допустили ошибку!', reply_markup=types.ReplyKeyboardMarkup(
+            keyboard=[
+                [types.KeyboardButton('➕ Добавить')],
+                [types.KeyboardButton('🔘 Средний показатель')],
+                [types.KeyboardButton('🔘 Все показатели')],
+                [types.KeyboardButton('🔘 Из мг/дл в ммоль/л')],
+                [types.KeyboardButton('🔘 Из ммоль/л в мг/дл')],
+                [types.KeyboardButton('🔙 Назад')],
+            ]
+        ))
+
+
 
 @dp.message_handler(state=Form.addsug)
 async def addsug(msg: types.Message, state: FSMContext):
@@ -462,7 +560,7 @@ async def addsug(msg: types.Message, state: FSMContext):
             pass
         else:
             await Form.addsug.set()
-            await msg.answer("Показатель нужно указывать цифрами!")
+            await msg.answer("Показатель указан неверно! Попробуйте еще раз. Обратите внимание число можно писать дробью, через точку (НЕ запятую)")
 
 
 @dp.callback_query_handler(lambda query: query.data == "male" or query.data == "female", state=Form.sex)
@@ -594,4 +692,12 @@ async def set_insulins(message: types.Message, state: FSMContext):
     await message.answer("Выбирите еденицы измерения уровня сахара в крови", reply_markup=kb)
 
 
-executor.start_polling(dp, skip_updates=True)
+async def startup(dispatcher):
+    print("== " + str(datetime.now()) + " ==")
+    print(str(bot.id) + " :ID")
+
+async def shutdown(dispatcher):
+    print("== " + str(datetime.now()) + " ==")
+
+
+executor.start_polling(dp, skip_updates=True, on_startup=startup, on_shutdown=shutdown)
