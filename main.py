@@ -56,16 +56,6 @@ sug = DataBase('sugars', 'sugars', config.MONGO_TOKEN, '_id')
 defaltSug = {
     'sugers': []
 }
-"""
-'sex': None,   					-- пол
-'type': None,   				-- тип диабета
-'weight': None,   				-- вес
-'height': None,   				-- рост
-'age': None,   					-- возраст
-'insulins': [None, None],   	-- список инсулинов
-'units': None   				-- еденицы измерения сахара мг/дл или ммоль/л.
-"""
-
 
 @dp.message_handler(commands=['del'])
 async def delete_user(message: types.Message):
@@ -194,8 +184,6 @@ _{midsug}_
 _{minsug}_
         """, parse_mode='Markdown')
     elif message.text == "🍬 Сахар":
-        # мг / дл
-        # ммоль / л
         await Form.sug.set()
         await message.answer("Доступные команды", reply_markup=types.ReplyKeyboardMarkup(
             keyboard=[
@@ -266,8 +254,8 @@ async def question(msg: types.Message, state: FSMContext):
     question = msg.text
     await bot.send_message(chat_id=-1001388451272, text=f'{question}'
                                                    f'\n\nID: {msg.from_user.id}\n'
-                                                   f'Username: {msg.from_user.username}\n'
-                                                   f'Time: {datetime.now()}', reply_markup=types.InlineKeyboardMarkup(
+                                                   f'Имя пользователя: {msg.from_user.username}\n'
+                                                   f'Время: {datetime.now()}', reply_markup=types.InlineKeyboardMarkup(
         inline_keyboard=[
             [types.InlineKeyboardButton('Ответить', callback_data='answer')],
             [types.InlineKeyboardButton('Закрыть', callback_data='close')],
@@ -284,16 +272,16 @@ async def answer(q, state: FSMContext):
         await Form.answersend.set()
         await bot.send_message(chat_id=-1001388451272, text='Пришлите ответ одним сообщением.'
                                                             'Например:')
-        await bot.send_message(chat_id=-1001388451272, text='123401234|В сообщение нужно указать таким образом ID пользователя'
+        await bot.send_message(chat_id=-1001388451272, text='123401234|В сообщение нужно указать таким образом: ID пользователя'
                                                             'задавшего вопрос и сам ответ')
     elif q.data == 'close':
         await state.finish()
         await bot.send_message(chat_id=-1001388451272, text='Вопрос был закрыт.')
     elif q.data == 'rate1' or q.data == 'rate2' or q.data == 'rate3' or q.data == 'rate4' or q.data == 'rate5':
-        await bot.send_message(chat_id=-1001388451272, text=f'Rating: {q.data[-1]}'
+        await bot.send_message(chat_id=-1001388451272, text=f'Оценка: {q.data[-1]}'
                                                        f'\n\nID: {q.from_user.id}\n'
-                                                       f'Username: {q.from_user.username}\n'
-                                                       f'Time: {datetime.now()}')
+                                                       f'Имя пользователя: {q.from_user.username}\n'
+                                                       f'Время: {datetime.now()}')
         await bot.send_message(chat_id=q.from_user.id, text='Спасибо за отзыв!')
         await state.finish()
 
