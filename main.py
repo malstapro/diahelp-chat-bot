@@ -15,7 +15,7 @@ class Form(StatesGroup):
     weight = State()
     height = State()
     age = State()
-    sex = State()
+    gender = State()
     typ = State()
     insulins = State()
     units = State()
@@ -36,7 +36,7 @@ class Mailing(StatesGroup):
     do = State()
     all = State()
     insulins = State()
-    sex = State()
+    gender = State()
     type = State()
     units = State()
     age = State()
@@ -44,7 +44,7 @@ class Mailing(StatesGroup):
 
 user = DataBase('users', 'users', config.MONGO_TOKEN, '_id')
 defaltUser = {
-    'sex': None,
+    'gender': None,
     'type': None,
     'weight': None,
     'height': None,
@@ -57,83 +57,156 @@ defaltSug = {
     'sugers': []
 }
 
-@dp.message_handler(commands=['del'])
-async def delete_user(message: types.Message):
-    user[message.from_user.id].delete_user()
-    sug[message.from_user.id].delete_user()
-    await message.answer("Пользователь успешно удален из базы данных!")
-
-
-@dp.message_handler(commands=['menu','меню'])
-async def menu(msg: types.Message, state: FSMContext):
-    await state.finish()
-    await msg.answer('Меню',
-                         reply_markup=types.ReplyKeyboardMarkup(keyboard=[
-                             [types.KeyboardButton(text="📊 Статистика")],
-                             [types.KeyboardButton(text="🍬 Сахар")],
-                             [types.KeyboardButton(text="⚙ Настройки")],
-                             [types.KeyboardButton(text="ℹ Информация")]
-                         ]))
-
-
-@dp.message_handler(commands=['mailing'])
-async def mailing(msg: types.Message):
-    if (msg.from_user.id in config.ADMINS):
-        await Mailing.do.set()
-        await msg.answer('Выбирите тип рассылки',
-                         reply_markup=types.InlineKeyboardMarkup(
-                             inline_keyboard=[
-                                 [types.InlineKeyboardButton('Все', callback_data='all')],
-                                 [types.InlineKeyboardButton('Инсулин', callback_data='insulin')],
-                                 [types.InlineKeyboardButton('Пол', callback_data='sex')],
-                                 [types.InlineKeyboardButton('Тип', callback_data='type')],
-                                 [types.InlineKeyboardButton('Еденицы', callback_data='units')],
-                                 [types.InlineKeyboardButton('Возраст', callback_data='age')],
-                             ]
-                         ))
-
-
-@dp.callback_query_handler(state=Mailing.do)
-async def mailing_do(q: types.InlineQueryResult, state: FSMContext):
-    usrs = user[q.from_user.id].find()
-    if q.data == 'all':
-        for id in usrs:
-            await bot.send_message(chat_id=id['_id'], text=f'ALL TEST {str(datetime.now())}')
-    elif q.data == 'insulin':
-        ids = []
-        for i in usrs:
-            if 'Insu' in i['insulins'] or 'Insul' in i['insulins']:
-                ids.append(i['_id'])
-        for id in ids:
-            await bot.send_message(chat_id=id, text=f'INSULIN TEST {str(datetime.now())}')
-    await state.finish()
-
 
 @dp.message_handler(commands=['start'])
 async def send_welcome(message: types.Message):
-    await Form.sex.set()
+    await Form.gender.set()
     await message.answer("Здравствуйте!\n"
                          "Я бот помощник для людей болеющих сахарным диабетом\n"
                          "Я могу предоставить вам разнообразную полезную информацию"
-                         "\nЧтобы узнать подробней, нажмите на кнопку *Помощь*."
                          "\n\n*САМОЛЕЧЕНИЕ МОЖЕТ НАВРЕДИТЬ ВАШЕМУ ЗДОРОВЬЮ!*", parse_mode="Markdown")
-
-    reg_btns = [
+    await message.answer("Для начала нужно пройти простую регистрацию\n\n"
+                         "Выберите ваш пол:", reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[
         [types.InlineKeyboardButton('Мужчина', callback_data='male')],
         [types.InlineKeyboardButton('Женщина', callback_data='female')]
-    ]
-    reg_kb = types.InlineKeyboardMarkup(inline_keyboard=reg_btns)
-
-    await message.answer("Для начала нужно пройти простую регистрацию\n\n"
-                         "Выберите ваш пол:", reply_markup=reg_kb)
+    ]))
     user[message.from_user.id] = defaltUser
     user[message.from_user.id].save()
     sug[message.from_user.id] = defaltSug
     sug[message.from_user.id].save()
 
 
+@dp.callback_query_handler(lambda query: query.data == "male" or query.data == "female", state=Form.gender)
+async def set_gender(query):
+    if query.data == "male":
+        user[query.from_user.id]['sex'] = 'male'
+        user[query.from_user.id].save()
+    elif query.data == "female":
+        user[query.from_user.id]['sex'] = 'female'
+        user[query.from_user.id].save()
+    else:
+        print("Error -- setsex -- query!")
+
+    btns = [
+        [types.InlineKeyboardButton('1', callback_data='type1')],
+        [types.InlineKeyboardButton('2', callback_data='type2')]
+    ]
+    kb = types.InlineKeyboardMarkup(inline_keyboard=btns)
+    await Form.typ.set()
+    await bot.send_message(chat_id=query.from_user.id, text="Какой у вас тип диабета?", reply_markup=kb)
+
+
+@dp.callback_query_handler(lambda query: query.data == "type1" or query.data == "type2", state=Form.typ)
+async def set_type(query):
+    if query.data == "type1":
+        user[query.from_user.id]['type'] = 'type1'
+        user[query.from_user.id].save()
+    elif query.data == "type2":
+        user[query.from_user.id]['type'] = 'type2'
+        user[query.from_user.id].save()
+    else:
+        print("Error -- settype -- query!")
+
+    await Form.weight.set()
+    await bot.send_message(chat_id=query.from_user.id, text="Ваш вес? (кг)")
+
+
+@dp.message_handler(state=Form.weight)
+async def set_weight(message: types.Message, state: FSMContext):
+    try:
+        w = int(message.text)
+        if (w <= 150) and (w >= 30):
+            user[message.from_user.id]['weight'] = message.text
+            user[message.from_user.id].save()
+            await Form.height.set()
+            await message.answer("Ваш рост? (см)")
+        else:
+            await message.answer("Вы допустили ошибку. Вес доолжен быть не менее 30 и не более 150 кг."
+                                 " Если ваш вес меньше 30 или больше 150,"
+                                 " настоятельно рекомендую вам обратиться"
+                                 "к врачу.")
+            await Form.weight.set()
+    except ValueError:
+        await Form.weight.set()
+        await message.answer("Вес нужно указывать цифрами!")
+
+
+@dp.message_handler(state=Form.height)
+async def set_height(message: types.Message, state: FSMContext):
+    try:
+        h = int(message.text)
+        if (h <= 250) and (h >= 40):
+            user[message.from_user.id]['height'] = message.text
+            user[message.from_user.id].save()
+            await Form.age.set()
+            await message.answer("Сколько вам лет?")
+        else:
+            await Form.height.set()
+            await message.answer("Вы допустили ошибку. Рост должен находиться в пределах от 40 см до 250 см.")
+    except ValueError:
+        await Form.height.set()
+        await message.answer("Рост нужно указывать цифрами!")
+
+
+@dp.message_handler(state=Form.age)
+async def set_age(message: types.Message, state: FSMContext):
+    try:
+        a = int(message.text)
+        if (a <= 13):
+            await message.answer("Использование бота доступно с 14 лет. Обратитесь к вашим родителям за помощью.")
+            user[message.from_user.id].delete_user()
+            sug[message.from_user.id].delete_user()
+            await state.finish()
+        elif (a > 100):
+            await message.answer("Конечно, люди могуть жить и больше ста лет. Но это бывает очень редко. "
+                                 "Обратитесь за помощью к Администратору(@tesla33IO)")
+            user[message.from_user.id].delete_user()
+            sug[message.from_user.id].delete_user()
+            await state.finish()
+        elif (a >= 14) and (a <= 100):
+            user[message.from_user.id]['age'] = message.text
+            user[message.from_user.id].save()
+            await Form.insulins.set()
+            await message.answer("Укажите ваши инсулины (через запятую)")
+    except ValueError:
+        await Form.age.set()
+        await message.answer("Возраст нужно указывать цифрами!")
+
+
+@dp.message_handler(state=Form.insulins)
+async def set_insulins(message: types.Message, state: FSMContext):
+    user[message.from_user.id]['insulins'] = message.text.split(',')
+    user[message.from_user.id].save()
+    kb = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton('мг/дл', callback_data='units_mg')],
+        [types.InlineKeyboardButton('ммоль/л', callback_data='units_mol')]
+    ])
+    await Form.units.set()
+    await message.answer("Выбирите еденицы измерения уровня сахара в крови", reply_markup=kb)
+
+
+@dp.callback_query_handler(lambda query: query.data == "units_mg" or query.data == "units_mol", state=Form.units)
+async def set_units(query, state: FSMContext):
+    if query.data == "units_mg":
+        user[query.from_user.id]['units'] = 'mg'
+        user[query.from_user.id].save()
+    elif query.data == "units_mol":
+        user[query.from_user.id]['units'] = 'mol'
+        user[query.from_user.id].save()
+    else:
+        print("Error -- setunits -- query!")
+    await state.finish()
+    kb = types.ReplyKeyboardMarkup(keyboard=[
+        [types.KeyboardButton(text="📊 Статистика")],
+        [types.KeyboardButton(text="🍬 Сахар")],
+        [types.KeyboardButton(text="⚙ Настройки")],
+        [types.KeyboardButton(text="ℹ Информация")]
+    ])
+    await bot.send_message(chat_id=query.from_user.id, text="Регистрация успешно завершена!", reply_markup=kb)
+
+
 @dp.message_handler(content_types=['text'])
-async def send_help(message: types.Message):
+async def statistics(message: types.Message):
     if message.text == "📊 Статистика":
         usr = user[message.from_user.id]
         sex = "👨" if usr['sex'] == 'male' else "👧"
@@ -249,53 +322,6 @@ _{minsug}_
                          ]))
 
 
-@dp.message_handler(state=Form.question)
-async def question(msg: types.Message, state: FSMContext):
-    question = msg.text
-    await bot.send_message(chat_id=-1001388451272, text=f'{question}'
-                                                   f'\n\nID: {msg.from_user.id}\n'
-                                                   f'Имя пользователя: {msg.from_user.username}\n'
-                                                   f'Время: {datetime.now()}', reply_markup=types.InlineKeyboardMarkup(
-        inline_keyboard=[
-            [types.InlineKeyboardButton('Ответить', callback_data='answer')],
-            [types.InlineKeyboardButton('Закрыть', callback_data='close')],
-        ]
-    ))
-    await msg.answer('Ваш вопрос доставлен моим администраторам, они его рассмотрят и постараются дать ответ.'
-                     'Будьте терпеливыми.')
-    await state.finish()
-
-
-@dp.callback_query_handler()
-async def answer(q, state: FSMContext):
-    if q.data == 'answer':
-        await Form.answersend.set()
-        await bot.send_message(chat_id=-1001388451272, text='Пришлите ответ одним сообщением.'
-                                                            'Например:')
-        await bot.send_message(chat_id=-1001388451272, text='123401234|В сообщение нужно указать таким образом: ID пользователя'
-                                                            'задавшего вопрос и сам ответ')
-    elif q.data == 'close':
-        await state.finish()
-        await bot.send_message(chat_id=-1001388451272, text='Вопрос был закрыт.')
-    elif q.data == 'rate1' or q.data == 'rate2' or q.data == 'rate3' or q.data == 'rate4' or q.data == 'rate5':
-        await bot.send_message(chat_id=-1001388451272, text=f'Оценка: {q.data[-1]}'
-                                                       f'\n\nID: {q.from_user.id}\n'
-                                                       f'Имя пользователя: {q.from_user.username}\n'
-                                                       f'Время: {datetime.now()}')
-        await bot.send_message(chat_id=q.from_user.id, text='Спасибо за отзыв!')
-        await state.finish()
-
-
-@dp.message_handler(state=Form.answersend)
-async def sendans(msg: types.Message, state: FSMContext):
-    try:
-        uid = msg.text.split('|')
-        await bot.send_message(chat_id=uid[0], text='На ваш вопрос был дан следующий ответ: '+uid[1])
-        await state.finish()
-    except Exception as e:
-        await bot.send_message(chat_id=-1001388451272, text=str(e) + '\n\nПопробуйте еще раз')
-
-
 @dp.message_handler(state=Form.settings)
 async def settings(msg: types.Message, state: FSMContext):
     txt = msg.text
@@ -373,6 +399,54 @@ async def clearsug(q: types.InlineQueryResult, state: FSMContext):
     ]))
     else:
         print("Error --- clearsug")
+
+
+@dp.message_handler(state=Form.question)
+async def question(msg: types.Message, state: FSMContext):
+    question = msg.text
+    await bot.send_message(chat_id=-1001388451272, text=f'{question}'
+                                                   f'\n\nID: {msg.from_user.id}\n'
+                                                   f'Имя пользователя: {msg.from_user.username}\n'
+                                                   f'Время: {datetime.now()}', reply_markup=types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [types.InlineKeyboardButton('Ответить', callback_data='answer')],
+            [types.InlineKeyboardButton('Закрыть', callback_data='close')],
+        ]
+    ))
+    await msg.answer('Ваш вопрос доставлен моим администраторам, они его рассмотрят и постараются дать ответ.'
+                     'Будьте терпеливыми.')
+    await state.finish()
+
+
+@dp.callback_query_handler()
+async def answer(q, state: FSMContext):
+    if q.data == 'answer':
+        await Form.answersend.set()
+        await bot.send_message(chat_id=-1001388451272, text='Пришлите ответ одним сообщением.'
+                                                            'Например:')
+        await bot.send_message(chat_id=-1001388451272, text='123401234|В сообщение нужно указать таким образом: ID пользователя'
+                                                            'задавшего вопрос и сам ответ')
+    elif q.data == 'close':
+        await state.finish()
+        await bot.send_message(chat_id=-1001388451272, text='Вопрос был закрыт.')
+    elif q.data == 'rate1' or q.data == 'rate2' or q.data == 'rate3' or q.data == 'rate4' or q.data == 'rate5':
+        await bot.send_message(chat_id=-1001388451272, text=f'Оценка: {q.data[-1]}'
+                                                       f'\n\nID: {q.from_user.id}\n'
+                                                       f'Имя пользователя: {q.from_user.username}\n'
+                                                       f'Время: {datetime.now()}')
+        await bot.send_message(chat_id=q.from_user.id, text='Спасибо за отзыв!')
+        await state.finish()
+
+
+@dp.message_handler(state=Form.answersend)
+async def sendans(msg: types.Message, state: FSMContext):
+    try:
+        uid = msg.text.split('|')
+        await bot.send_message(chat_id=uid[0], text='На ваш вопрос был дан следующий ответ: '+uid[1])
+        await state.finish()
+    except Exception as e:
+        await bot.send_message(chat_id=-1001388451272, text=str(e) + '\n\nПопробуйте еще раз')
+
 
 
 @dp.message_handler(state=Form.sug)
@@ -457,6 +531,38 @@ async def sugg(msg: types.Message, state: FSMContext):
         [types.KeyboardButton(text="ℹ Информация")]
     ]))
 
+        
+@dp.message_handler(state=Form.addsug)
+async def addsug(msg: types.Message, state: FSMContext):
+    try:
+        suger = float(msg.text)
+        max = 0
+        min = 0
+        if (user[msg.from_user.id]['units'] == 'mol'):
+            max = 35
+            min = 1
+        elif (user[msg.from_user.id]['units'] == 'mg'):
+            max = 630.63
+            min = 18.02
+        if (suger >= min) and (suger <= max):
+            s = sug[msg.from_user.id]['sugers']
+            s.append(suger)
+            sug[msg.from_user.id]['sugers'] = s
+            sug[msg.from_user.id].save()
+            await msg.answer("Показатель сохранен!")
+            await state.finish()
+        else:
+            await Form.addsug.set()
+            await msg.answer("Показатель указан неверно. Попробуйте еще раз")
+    except ValueError:
+        if msg.text == 'cancel' or msg.text == 'Cancel' or msg.text == 'Отмена' or msg.text == 'отмена':
+            await state.finish()
+            await msg.answer("Действие отменено")
+            pass
+        else:
+            await Form.addsug.set()
+            await msg.answer("Показатель указан неверно! Попробуйте еще раз. Обратите внимание число можно писать дробью, через точку (НЕ запятую)")
+
 
 @dp.message_handler(state=Form.mgtomol)
 async def mgtomol(msg: types.Message, state: FSMContext):
@@ -518,166 +624,56 @@ async def moltomg(msg: types.Message, state: FSMContext):
         ))
 
 
-
-@dp.message_handler(state=Form.addsug)
-async def addsug(msg: types.Message, state: FSMContext):
-    try:
-        suger = float(msg.text)
-        max = 0
-        min = 0
-        if (user[msg.from_user.id]['units'] == 'mol'):
-            max = 35
-            min = 1
-        elif (user[msg.from_user.id]['units'] == 'mg'):
-            max = 630.63
-            min = 18.02
-        if (suger >= min) and (suger <= max):
-            s = sug[msg.from_user.id]['sugers']
-            s.append(suger)
-            sug[msg.from_user.id]['sugers'] = s
-            sug[msg.from_user.id].save()
-            await msg.answer("Показатель сохранен!")
-            await state.finish()
-        else:
-            await Form.addsug.set()
-            await msg.answer("Показатель указан неверно. Попробуйте еще раз")
-    except ValueError:
-        if msg.text == 'cancel' or msg.text == 'Cancel' or msg.text == 'Отмена' or msg.text == 'отмена':
-            await state.finish()
-            await msg.answer("Действие отменено")
-            pass
-        else:
-            await Form.addsug.set()
-            await msg.answer("Показатель указан неверно! Попробуйте еще раз. Обратите внимание число можно писать дробью, через точку (НЕ запятую)")
+@dp.message_handler(commands=['del'])
+async def delete_user(message: types.Message):
+    user[message.from_user.id].delete_user()
+    sug[message.from_user.id].delete_user()
+    await message.answer("Пользователь успешно удален из базы данных!")
 
 
-@dp.callback_query_handler(lambda query: query.data == "male" or query.data == "female", state=Form.sex)
-async def set_sex(query):
-    if query.data == "male":
-        user[query.from_user.id]['sex'] = 'male'
-        user[query.from_user.id].save()
-    elif query.data == "female":
-        user[query.from_user.id]['sex'] = 'female'
-        user[query.from_user.id].save()
-    else:
-        print("Error -- setsex -- query!")
-
-    btns = [
-        [types.InlineKeyboardButton('1', callback_data='type1')],
-        [types.InlineKeyboardButton('2', callback_data='type2')]
-    ]
-    kb = types.InlineKeyboardMarkup(inline_keyboard=btns)
-    await Form.typ.set()
-    await bot.send_message(chat_id=query.from_user.id, text="Какой у вас тип диабета?", reply_markup=kb)
-
-
-@dp.callback_query_handler(lambda query: query.data == "type1" or query.data == "type2", state=Form.typ)
-async def set_type(query):
-    if query.data == "type1":
-        user[query.from_user.id]['type'] = 'type1'
-        user[query.from_user.id].save()
-    elif query.data == "type2":
-        user[query.from_user.id]['type'] = 'type2'
-        user[query.from_user.id].save()
-    else:
-        print("Error -- settype -- query!")
-
-    await Form.weight.set()
-    await bot.send_message(chat_id=query.from_user.id, text="Ваш вес? (кг)")
-
-
-@dp.callback_query_handler(lambda query: query.data == "units_mg" or query.data == "units_mol", state=Form.units)
-async def set_units(query, state: FSMContext):
-    if query.data == "units_mg":
-        user[query.from_user.id]['units'] = 'mg'
-        user[query.from_user.id].save()
-    elif query.data == "units_mol":
-        user[query.from_user.id]['units'] = 'mol'
-        user[query.from_user.id].save()
-    else:
-        print("Error -- setunits -- query!")
+@dp.message_handler(commands=['menu','меню'])
+async def menu(msg: types.Message, state: FSMContext):
     await state.finish()
-    kb = types.ReplyKeyboardMarkup(keyboard=[
-        [types.KeyboardButton(text="📊 Статистика")],
-        [types.KeyboardButton(text="🍬 Сахар")],
-        [types.KeyboardButton(text="⚙ Настройки")],
-        [types.KeyboardButton(text="ℹ Информация")]
-    ])
-    await bot.send_message(chat_id=query.from_user.id, text="Регистрация успешно завершена!", reply_markup=kb)
+    await msg.answer('Меню',
+                         reply_markup=types.ReplyKeyboardMarkup(keyboard=[
+                             [types.KeyboardButton(text="📊 Статистика")],
+                             [types.KeyboardButton(text="🍬 Сахар")],
+                             [types.KeyboardButton(text="⚙ Настройки")],
+                             [types.KeyboardButton(text="ℹ Информация")]
+                         ]))
 
 
-@dp.message_handler(state=Form.weight)
-async def set_weight(message: types.Message, state: FSMContext):
-    try:
-        w = int(message.text)
-        if (w <= 150) and (w >= 30):
-            user[message.from_user.id]['weight'] = message.text
-            user[message.from_user.id].save()
-            await Form.height.set()
-            await message.answer("Ваш рост? (см)")
-        else:
-            await message.answer("Вы допустили ошибку. Вес доолжен быть не менее 30 и не более 150 кг."
-                                 " Если ваш вес меньше 30 или больше 150,"
-                                 " настоятельно рекомендую вам обратиться"
-                                 "к врачу.")
-            await Form.weight.set()
-    except ValueError:
-        await Form.weight.set()
-        await message.answer("Вес нужно указывать цифрами!")
+@dp.message_handler(commands=['mailing'])
+async def mailing(msg: types.Message):
+    if (msg.from_user.id in config.ADMINS):
+        await Mailing.do.set()
+        await msg.answer('Выбирите тип рассылки',
+                         reply_markup=types.InlineKeyboardMarkup(
+                             inline_keyboard=[
+                                 [types.InlineKeyboardButton('Все', callback_data='all')],
+                                 [types.InlineKeyboardButton('Инсулин', callback_data='insulin')],
+                                 [types.InlineKeyboardButton('Пол', callback_data='gender')],
+                                 [types.InlineKeyboardButton('Тип', callback_data='type')],
+                                 [types.InlineKeyboardButton('Еденицы', callback_data='units')],
+                                 [types.InlineKeyboardButton('Возраст', callback_data='age')],
+                             ]
+                         ))
 
 
-@dp.message_handler(state=Form.height)
-async def set_height(message: types.Message, state: FSMContext):
-    try:
-        h = int(message.text)
-        if (h <= 250) and (h >= 40):
-            user[message.from_user.id]['height'] = message.text
-            user[message.from_user.id].save()
-            await Form.age.set()
-            await message.answer("Сколько вам лет?")
-        else:
-            await Form.height.set()
-            await message.answer("Вы допустили ошибку. Рост должен находиться в пределах от 40 см до 250 см.")
-    except ValueError:
-        await Form.height.set()
-        await message.answer("Рост нужно указывать цифрами!")
-
-
-@dp.message_handler(state=Form.age)
-async def set_age(message: types.Message, state: FSMContext):
-    try:
-        a = int(message.text)
-        if (a <= 13):
-            await message.answer("Использование бота доступно с 14 лет. Обратитесь к вашим родителям за помощью.")
-            user[message.from_user.id].delete_user()
-            sug[message.from_user.id].delete_user()
-            await state.finish()
-        elif (a > 100):
-            await message.answer("Конечно, люди могуть жить и больше ста лет. Но это бывает очень редко. "
-                                 "Обратитесь за помощью к Администратору(@tesla33IO)")
-            user[message.from_user.id].delete_user()
-            sug[message.from_user.id].delete_user()
-            await state.finish()
-        elif (a >= 14) and (a <= 100):
-            user[message.from_user.id]['age'] = message.text
-            user[message.from_user.id].save()
-            await Form.insulins.set()
-            await message.answer("Укажите ваши инсулины (через запятую)")
-    except ValueError:
-        await Form.age.set()
-        await message.answer("Возраст нужно указывать цифрами!")
-
-
-@dp.message_handler(state=Form.insulins)
-async def set_insulins(message: types.Message, state: FSMContext):
-    user[message.from_user.id]['insulins'] = message.text.split(',')
-    user[message.from_user.id].save()
-    kb = types.InlineKeyboardMarkup(inline_keyboard=[
-        [types.InlineKeyboardButton('мг/дл', callback_data='units_mg')],
-        [types.InlineKeyboardButton('ммоль/л', callback_data='units_mol')]
-    ])
-    await Form.units.set()
-    await message.answer("Выбирите еденицы измерения уровня сахара в крови", reply_markup=kb)
+@dp.callback_query_handler(state=Mailing.do)
+async def mailing_do(q: types.InlineQueryResult, state: FSMContext):
+    usrs = user[q.from_user.id].find()
+    if q.data == 'all':
+        for id in usrs:
+            await bot.send_message(chat_id=id['_id'], text=f'ALL TEST {str(datetime.now())}')
+    elif q.data == 'insulin':
+        ids = []
+        for i in usrs:
+            if 'Insu' in i['insulins'] or 'Insul' in i['insulins']:
+                ids.append(i['_id'])
+        for id in ids:
+            await bot.send_message(chat_id=id, text=f'INSULIN TEST {str(datetime.now())}')
+    await state.finish()
 
 
 async def startup(dispatcher):
