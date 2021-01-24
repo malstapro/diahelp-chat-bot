@@ -80,7 +80,7 @@ async def send_help(msg: types.Message, state: FSMContext):
 @dp.message_handler(commands=['about','автор'])
 async def send_about(msg: types.Message, state: FSMContext):
     await state.finish()
-    await msg.answer('Бот был создан для конкурса "Infotech"\n\nCopyright © @teslla33IO 2020 - 2021')
+    await msg.answer('Бот был создан для конкурса "Infotech"\n\nCopyright © @tesla33IO 2020 - 2021')
 
 
 @dp.message_handler(commands=['start'])
