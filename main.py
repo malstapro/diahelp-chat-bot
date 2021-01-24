@@ -25,9 +25,6 @@ class Form(StatesGroup):
     deluser = State()
     settings = State()
     rate = State()
-    question = State()
-    answer = State()
-    answersend = State()
     mgtomol = State()
     moltomg = State()
 
@@ -65,6 +62,25 @@ async def menu(msg: types.Message, state: FSMContext):
                          [types.KeyboardButton(text="⚙ Настройки")],
                          [types.KeyboardButton(text="ℹ Информация")]
                      ]))
+
+
+@dp.message_handler(commands=['help','помощь'])
+async def send_help(msg: types.Message, state: FSMContext):
+    await state.finish()
+    await msg.answer('''Для открытия меню: напишите /menu
+    📊 Статистика - покажет вам основные данные которые хранит бот.
+    
+    🍬 Сахар - позволит вам провести разнообразные оперцаии с показателем уровня сахара в крови (сохранение, средний показатель и т.д.)
+    
+    ⚙ Настройки - вы можете очистить все записаные вами показатели уровня сахара в крови
+    
+    ℹ Информация - здесь вы можете увидеть некоторую информацию о боте, автора и оценить работу бота.''')
+
+
+@dp.message_handler(commands=['about','автор'])
+async def send_about(msg: types.Message, state: FSMContext):
+    await state.finish()
+    await msg.answer('Бот был создан для конкурса "Infotech"\n\nCopyright © @teslla33IO 2020 - 2021')
 
 
 @dp.message_handler(commands=['start'])
@@ -172,13 +188,7 @@ async def set_age(message: types.Message, state: FSMContext):
             user[message.from_user.id].delete_user()
             sug[message.from_user.id].delete_user()
             await state.finish()
-        elif (a > 100):
-            await message.answer("Конечно, люди могуть жить и больше ста лет. Но это бывает очень редко. "
-                                 "Обратитесь за помощью к Администратору(@tesla33IO)")
-            user[message.from_user.id].delete_user()
-            sug[message.from_user.id].delete_user()
-            await state.finish()
-        elif (a >= 14) and (a <= 100):
+        elif (a >= 14):
             user[message.from_user.id]['age'] = message.text
             user[message.from_user.id].save()
             await Form.insulins.set()
@@ -295,7 +305,6 @@ _{minsug}_
                              reply_markup=types.ReplyKeyboardMarkup(
                                  keyboard=[
                                      [types.KeyboardButton('👤 Создатель')],
-                                     [types.KeyboardButton('❓ Задать вопрос')],
                                      [types.KeyboardButton('⭐ Оставить отзыв')],
                                      [types.KeyboardButton('🔙 Назад')],
                                  ]
@@ -312,9 +321,6 @@ _{minsug}_
     elif message.text == '👤 Создатель':
         await message.answer('Меня создал великолепный человек!'
                              '\nhttps://t.me/tesla33IO')
-    elif message.text == '❓ Задать вопрос':
-        await Form.question.set()
-        await message.answer('Задайте любые интересующие вас вопросы в одном сообщение.')
     elif message.text == '⭐ Оставить отзыв':
         await message.answer('На сколько вы бы оценили работу бота?',
                              reply_markup=types.InlineKeyboardMarkup(
@@ -571,48 +577,15 @@ async def clearsug(q: types.InlineQueryResult, state: FSMContext):
         print("Error --- clearsug")
 
 
-@dp.message_handler(state=Form.question)
-async def question(msg: types.Message, state: FSMContext):
-    question = msg.text
-    await bot.send_message(chat_id=-1001388451272, text=f'{question}'
-                                                        f'\n\nID: {msg.from_user.id}\n'
-                                                        f'Имя пользователя: {msg.from_user.username}\n'
-                                                        f'Время: {datetime.now()}',
-                           reply_markup=types.InlineKeyboardMarkup(
-                               inline_keyboard=[
-                                   [types.InlineKeyboardButton('Ответить', callback_data='answer')],
-                                   [types.InlineKeyboardButton('Закрыть', callback_data='close')],
-                               ]
-                           ))
-    await msg.answer('Ваш вопрос доставлен моим администраторам, они его рассмотрят и постараются дать ответ.'
-                     'Будьте терпеливыми.')
-    await state.finish()
-
-
 @dp.callback_query_handler()
 async def answer(q, state: FSMContext):
-    if q.data == 'answer':
-        await Form.answersend.set()
-        await bot.send_message(chat_id=-1001388451272, text='Пришлите ответ одним сообщением.')
-    elif q.data == 'close':
-        await state.finish()
-        await bot.send_message(chat_id=-1001388451272, text='Вопрос был закрыт.')
-    elif q.data == 'rate1' or q.data == 'rate2' or q.data == 'rate3' or q.data == 'rate4' or q.data == 'rate5':
+    if q.data == 'rate1' or q.data == 'rate2' or q.data == 'rate3' or q.data == 'rate4' or q.data == 'rate5':
         await bot.send_message(chat_id=-1001388451272, text=f'Оценка: {q.data[-1]}'
                                                             f'\n\nID: {q.from_user.id}\n'
                                                             f'Имя пользователя: {q.from_user.username}\n'
                                                             f'Время: {datetime.now()}')
         await bot.send_message(chat_id=q.from_user.id, text='Спасибо за отзыв!')
         await state.finish()
-
-
-@dp.message_handler(state=Form.answersend)
-async def sendans(msg: types.Message, state: FSMContext):
-    try:
-        await bot.send_message(chat_id=msg.from_user.id, text='На ваш вопрос был дан следующий ответ: ' + msg.text)
-        await state.finish()
-    except Exception as e:
-        await bot.send_message(chat_id=-1001388451272, text=str(e) + '\n\nПопробуйте еще раз')
 
 
 async def startup(dispatcher):
