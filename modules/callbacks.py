@@ -6,6 +6,7 @@ from aiogram.types import ParseMode
 import logging
 import asyncio
 from datetime import datetime
+from tabulate import tabulate
 
 from modules import keyboards as kb
 from modules import database as db
@@ -17,10 +18,13 @@ dp = Dispatcher(bot, storage=MemoryStorage())
 user = db.DataBase('users', 'users', credentials.MONGO_TOKEN, '_id')
 sugar = db.DataBase('sugars', 'sugars', credentials.MONGO_TOKEN, '_id')
 logging.basicConfig(filename='diahelpbot.log', format='%(levelname)s : %(asctime)s | %(name)s : %(message)s')
+dt_format = "%m/%d/%Y/%H/%M/%S"
 
 
 class Sugar(StatesGroup):
     add_to_db = State()
+    mid_sugar = State()
+    all_sugar = State()
 
 
 @dp.message_handler(commands=['del'])
@@ -131,7 +135,7 @@ async def add_to_db(m: types.Message, state: FSMContext):
             _min = 1
         if (index >= _min) and (index <= _max):
             _all = sugar[m.from_user.id]['sugars']
-            _all.append({str(index):datetime.now().strftime("%m-%d-%Y, %H:%M:%S")})
+            _all.append({str(index):datetime.now().strftime(dt_format)})
             sugar[m.from_user.id]['sugars'] = _all
             sugar[m.from_user.id].save()
             await bot.send_message(m.from_user.id, messages.index_saved)
@@ -154,3 +158,54 @@ async def add_to_db(m: types.Message, state: FSMContext):
             await bot.send_message(m.from_user.id, messages.value_error, parse_mode=ParseMode.MARKDOWN)
             await asyncio.sleep(3)
             await bot.send_message(m.from_user.id, messages.send_sugar.format(_min), parse_mode=ParseMode.MARKDOWN)
+
+
+@dp.message_handler(text='🔘 Середній показник')
+async def middle_sugar_choice(m: types.Message):
+    await Sugar.mid_sugar.set()
+    await bot.send_message(m.from_user.id, messages.mid_sug_choice, reply_markup=kb.mid_sug_choice)
+
+
+@dp.callback_query_handler(state=Sugar.mid_sugar)
+async def middle_sugar_processing(q: types.CallbackQuery, state: FSMContext):
+    if q.data == 'midsug_day' or q.data == 'midsug_month':
+        try:
+            now_day = datetime.now().strftime('%d')
+            now_month = datetime.now().strftime('%m')
+            _all = sugar[q.from_user.id]['sugars']
+            result = []
+            for i in _all:
+                for j in i:
+                    date = i[j].split('/')
+                    if q.data == 'midsug_day':
+                        if date[1] == now_day:
+                            result.append(float(j))
+                    elif q.data == 'midsug_month':
+                        if date[0] == now_month:
+                            result.append(float(j))
+            if q.data == 'midsug_day':
+                middle_sugar_all_day = 0
+                for i in result:
+                    middle_sugar_all_day += i
+                middle_sugar_day = '{:.1f}'.format(middle_sugar_all_day / len(result))
+                await bot.send_message(q.from_user.id, messages.mid_sug_day.format(middle_sugar_day), parse_mode=ParseMode.MARKDOWN)
+            elif q.data == 'midsug_month':
+                middle_sugar_all_month = 0
+                for i in result:
+                    middle_sugar_all_month += i
+                middle_sugar_month = '{:.1f}'.format(middle_sugar_all_month / len(result))
+                await bot.send_message(q.from_user.id, messages.mid_sug_day.format(middle_sugar_month), parse_mode=ParseMode.MARKDOWN)
+            await state.finish()
+        except Exception as e:
+            await state.finish()
+            logging.error(e.__class__.__name__ + ': ' + str(e))
+
+
+@dp.message_handler(text='🔘 Усі показники')
+async def all_sugar(m: types.Message):
+    result = []
+    for i in sugar[m.from_user.id]['sugars']:
+        for j in i:
+            result.append(j)
+    await bot.send_message(m.from_user.id, messages.all_sug_day)
+    await bot.send_message(m.from_user.id, '\n'.join(result))

@@ -32,3 +32,8 @@ reg = InlineKeyboardMarkup()
 reg.add(InlineKeyboardButton('ммоль/л', callback_data='units_mol'))
 reg.add(InlineKeyboardButton('мг/дл', callback_data='units_mg'))
 
+
+mid_sug_choice = InlineKeyboardMarkup()
+mid_sug_choice.add(InlineKeyboardButton('День', callback_data='midsug_day'))
+mid_sug_choice.add(InlineKeyboardButton('Місяць', callback_data='midsug_month'))
+
