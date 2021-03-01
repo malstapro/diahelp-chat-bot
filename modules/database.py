@@ -9,12 +9,9 @@ class DataBase(dict):
         self.base_key = base_key
         self.load()
 
-        # return self
-
     def load(self, q={}):
         upd = {item[self.base_key]: MongoItem(item, self.collection, self.base_key) for item in
                self.collection.find({})}
-        # print(upd)
         self.update(upd)
 
     def __setitem__(self, k, v):
@@ -35,7 +32,7 @@ class MongoItem(dict):
     def save(self):
         self.collection.update_one({self.base_key: self[self.base_key]}, {'$set': self}, upsert=True)
 
-    def delete_user(self):
+    def delete(self):
         self.collection.delete_one({self.base_key: self[self.base_key]})
 
     def find(self):
@@ -43,5 +40,4 @@ class MongoItem(dict):
         return list(self.cursor)
 
     def load(self):
-        # self.update(self.collection.find_one({self.base_key: self[self.base_key]}))
         return list(self.collection.find({}))
