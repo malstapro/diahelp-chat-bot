@@ -6,7 +6,6 @@ from aiogram.types import ParseMode
 import logging
 import asyncio
 from datetime import datetime
-from tabulate import tabulate
 
 from modules import keyboards as kb
 from modules import database as db
