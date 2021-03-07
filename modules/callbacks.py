@@ -18,12 +18,23 @@ user = db.DataBase('users', 'users', credentials.MONGO_TOKEN, '_id')
 sugar = db.DataBase('sugars', 'sugars', credentials.MONGO_TOKEN, '_id')
 logging.basicConfig(filename='diahelpbot.log', format='%(levelname)s : %(asctime)s | %(name)s : %(message)s')
 dt_format = "%m/%d/%Y/%H/%M/%S"
-
+defaultSugar = {
+    'sugars': []
+}
 
 class Sugar(StatesGroup):
     add_to_db = State()
     mid_sugar = State()
     all_sugar = State()
+
+
+class Settings(StatesGroup):
+    clear_sugar_confirm = State()
+    change_units = State()
+
+
+class Rating(StatesGroup):
+    send_rating = State()
 
 
 @dp.message_handler(commands=['del'])
@@ -48,9 +59,6 @@ async def cancel(m: types.Message, state: FSMContext):
         pass
 
 
-@dp.message_handler(text='🆘 Допомога', state='*')
-async def send_help(m: types.Message, state: FSMContext):
-    await bot.send_message(m.from_user.id, messages._help, reply_markup=kb.author, parse_mode=ParseMode.MARKDOWN)
 
 
 @dp.message_handler(commands=['about'], state='*')
@@ -243,3 +251,87 @@ async def all_sugar(q: types.CallbackQuery, state: FSMContext):
     except Exception as e:
         await state.finish()
         logging.error(e.__class__.__name__ + ': ' + str(e))
+
+
+@dp.message_handler(text='⚙ Налаштування')
+async def settings_processing(m: types.Message):
+    await bot.send_message(m.from_user.id, messages.settings_main, reply_markup=kb.settings)
+
+
+@dp.message_handler(text='🗑 Видалити показники цукру')
+async def clear_sugar_processing(m: types.Message):
+    await Settings.clear_sugar_confirm.set()
+    await bot.send_message(m.from_user.id, messages.settings_clear_sug_conf, reply_markup=kb.confirm, parse_mode=ParseMode.MARKDOWN)
+
+
+@dp.callback_query_handler(state=Settings.clear_sugar_confirm)
+async def clear_sugar(q: types.CallbackQuery, state: FSMContext):
+    try:
+        if q.data == 'yes':
+            sugar[q.from_user.id].delete()
+            sugar[q.from_user.id] = defaultSugar
+            sugar[q.from_user.id].save()
+            await state.finish()
+            await bot.send_message(q.from_user.id, messages.data_deleted, reply_markup=kb.settings)
+        elif q.data == 'no':
+            await state.finish()
+            await bot.send_message(q.from_user.id, messages.canceled, reply_markup=kb.settings)
+    except Exception as e:
+        await state.finish()
+        logging.error(e.__class__.__name__ + ': ' + str(e))
+
+
+@dp.message_handler(text='🔄 Змінити одиниці вимірювання')
+async def change_units_processing(m: types.Message):
+    await Settings.change_units.set()
+    await bot.send_message(m.from_user.id, messages.choice_units, reply_markup=kb.reg)
+
+
+@dp.callback_query_handler(state=Settings.change_units)
+async def change_units(q: types.CallbackQuery, state: FSMContext):
+    try:
+        units = user[q.from_user.id]['units']
+        if q.data == units:
+            await state.finish()
+            await bot.send_message(q.from_user.id, messages.units_identical_error, reply_markup=kb.settings)
+        else:
+            await state.finish()
+            user[q.from_user.id]['units'] = q.data
+            user[q.from_user.id].save()
+            await bot.send_message(q.from_user.id, messages.units_changed, reply_markup=kb.settings)
+    except Exception as e:
+        await state.finish()
+        logging.error(e.__class__.__name__ + ': ' + str(e))
+
+
+@dp.message_handler(text='ℹ Інформація')
+async def information(m: types.Message):
+    await bot.send_message(m.from_user.id, messages.accessible, reply_markup=kb.info)
+
+
+@dp.message_handler(text='👤 Творець')
+async def author(m: types.Message):
+    await bot.send_message(m.from_user.id, messages.author, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
+
+
+@dp.message_handler(text='⭐ Оцінити бота')
+async def rating(m: types.Message):
+    await Rating.send_rating.set()
+    await bot.send_message(m.from_user.id, messages.rating_choice, reply_markup=kb.rating)
+
+
+@dp.callback_query_handler(state=Rating.send_rating)
+async def send_rating(q: types.CallbackQuery, state: FSMContext):
+    try:
+        id = 614259495
+        await bot.send_message(id, messages.rating_to_developer.format(q.from_user.username, q.data, str(datetime.now())), parse_mode=ParseMode.MARKDOWN)
+        await bot.send_message(q.from_user.id, messages.rating_ty)
+        await state.finish()
+    except Exception as e:
+        await state.finish()
+        logging.error(e.__class__.__name__ + ': ' + str(e))
+
+
+@dp.message_handler(text='🆘 Допомога')
+async def send_help(m: types.Message):
+    await bot.send_message(m.from_user.id, messages._help, reply_markup=kb.author, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)

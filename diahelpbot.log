@@ -1,0 +1,31 @@
+WARNING : 2021-03-07 21:57:55,266 | aiogram : Updates were skipped successfully.
+WARNING : 2021-03-07 21:58:28,746 | aiogram : Goodbye!
+WARNING : 2021-03-07 21:58:38,516 | aiogram : Updates were skipped successfully.
+ERROR : 2021-03-07 21:58:43,254 | root : AttributeError: 'str' object has no attribute 'save'
+WARNING : 2021-03-07 21:59:16,707 | aiogram : Goodbye!
+WARNING : 2021-03-07 21:59:24,797 | aiogram : Updates were skipped successfully.
+ERROR : 2021-03-07 21:59:30,017 | root : AttributeError: 'str' object has no attribute 'save'
+WARNING : 2021-03-07 22:01:51,259 | aiogram : Goodbye!
+WARNING : 2021-03-07 22:02:03,836 | aiogram : Updates were skipped successfully.
+ERROR : 2021-03-07 22:02:12,014 | root : AttributeError: 'str' object has no attribute 'save'
+WARNING : 2021-03-07 22:02:49,966 | aiogram : Goodbye!
+WARNING : 2021-03-07 22:03:00,286 | aiogram : Updates were skipped successfully.
+ERROR : 2021-03-07 22:03:09,852 | root : TypeError: descriptor 'strftime' for 'datetime.date' objects doesn't apply to a 'str' object
+WARNING : 2021-03-07 22:03:47,925 | aiogram : Goodbye!
+WARNING : 2021-03-07 22:04:00,345 | aiogram : Updates were skipped successfully.
+ERROR : 2021-03-07 22:04:02,843 | root : TypeError: descriptor 'strftime' for 'datetime.date' objects doesn't apply to a 'str' object
+WARNING : 2021-03-07 22:04:50,568 | aiogram : Goodbye!
+WARNING : 2021-03-07 22:04:58,226 | aiogram : Updates were skipped successfully.
+WARNING : 2021-03-07 22:05:57,769 | aiogram : Goodbye!
+WARNING : 2021-03-07 22:06:11,520 | aiogram : Updates were skipped successfully.
+ERROR : 2021-03-07 22:06:37,588 | root : BadRequest: Unsupported parse_mode
+WARNING : 2021-03-07 22:07:14,915 | aiogram : Goodbye!
+WARNING : 2021-03-07 22:07:28,403 | aiogram : Updates were skipped successfully.
+ERROR : 2021-03-07 22:07:41,933 | root : ZeroDivisionError: division by zero
+ERROR : 2021-03-07 22:08:27,836 | root : AttributeError: 'str' object has no attribute 'save'
+WARNING : 2021-03-07 22:08:55,044 | aiogram : Goodbye!
+WARNING : 2021-03-07 22:09:05,649 | aiogram : Updates were skipped successfully.
+ERROR : 2021-03-07 22:09:07,774 | root : AttributeError: 'str' object has no attribute 'save'
+WARNING : 2021-03-07 22:10:35,663 | aiogram : Goodbye!
+WARNING : 2021-03-07 22:10:48,176 | aiogram : Updates were skipped successfully.
+ERROR : 2021-03-07 22:13:33,274 | root : ZeroDivisionError: division by zero

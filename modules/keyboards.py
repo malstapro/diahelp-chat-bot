@@ -21,6 +21,7 @@ info.row(KeyboardButton('🔙 Назад'))
 
 settings = ReplyKeyboardMarkup(resize_keyboard=True)
 settings.row(KeyboardButton('🗑 Видалити показники цукру'))
+settings.row(KeyboardButton('🔄 Змінити одиниці вимірювання'))
 settings.row(KeyboardButton('🔙 Назад'))
 
 
@@ -36,4 +37,17 @@ reg.add(InlineKeyboardButton('мг/дл', callback_data='units_mg'))
 period_sug_choice = InlineKeyboardMarkup()
 period_sug_choice.add(InlineKeyboardButton('День', callback_data='midsug_day'))
 period_sug_choice.add(InlineKeyboardButton('Місяць', callback_data='midsug_month'))
+
+
+confirm = InlineKeyboardMarkup()
+confirm.add(InlineKeyboardButton('Так', callback_data='yes'))
+confirm.add(InlineKeyboardButton('Ні', callback_data='no'))
+
+
+rating = InlineKeyboardMarkup()
+rating.add(InlineKeyboardButton('⭐️⭐️⭐️⭐️⭐️', callback_data='5'))
+rating.add(InlineKeyboardButton('⭐️⭐️⭐️⭐', callback_data='4'))
+rating.add(InlineKeyboardButton('⭐️⭐️⭐', callback_data='3'))
+rating.add(InlineKeyboardButton('⭐️⭐', callback_data='2'))
+rating.add(InlineKeyboardButton('⭐', callback_data='1'))
 
