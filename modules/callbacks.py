@@ -30,6 +30,7 @@ class Sugar(StatesGroup):
 
 class Settings(StatesGroup):
     clear_sugar_confirm = State()
+    change_units_confirm = State()
     change_units = State()
 
 
@@ -47,14 +48,14 @@ async def delete_user(m: types.Message):
         logging.error(e)
 
 
-@dp.message_handler(lambda d: d.text == "Відміна" or d.text == 'відміна' or 'cancel' in d.text, state="*")
+@dp.message_handler(lambda d: d.text == "Відміна" or d.text == 'відміна' or d.text == 'cancel' or d.text == '/cancel', state="*")
 async def cancel(m: types.Message, state: FSMContext):
     """
     Ця функція закінчує будь-який діалог з користувачем
     """
     if m.text == "Відміна" or m.text == 'відміна' or 'skip' in m.text:
         await state.finish()
-        await bot.send_message(m.from_user.id, messages.canceled)
+        await bot.send_message(m.from_user.id, messages.canceled, reply_markup=kb.main_keyboard)
     else:
         pass
 
@@ -64,6 +65,11 @@ async def cancel(m: types.Message, state: FSMContext):
 @dp.message_handler(commands=['about'], state='*')
 async def send_about(m: types.Message, state: FSMContext):
     await bot.send_message(m.from_user.id, messages.about)
+
+
+@dp.message_handler(commands=['help'], state='*')
+async def send_help(m: types.Message):
+    await bot.send_message(m.from_user.id, messages._help, reply_markup=kb.author, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
 
 
 @dp.message_handler(commands=['menu'])
@@ -117,7 +123,7 @@ async def statistics(m: types.Message):
 
 @dp.message_handler(text='🍬 Цукор')
 async def sugar_processing(m: types.Message):
-    await bot.send_message(m.from_user.id, messages.accessible, reply_markup=kb.sugar)
+    await bot.send_message(m.from_user.id, messages.accessible_sugar, reply_markup=kb.sugar, parse_mode=ParseMode.MARKDOWN)
 
 
 @dp.message_handler(text='➕ Додати показник')
@@ -255,7 +261,7 @@ async def all_sugar(q: types.CallbackQuery, state: FSMContext):
 
 @dp.message_handler(text='⚙ Налаштування')
 async def settings_processing(m: types.Message):
-    await bot.send_message(m.from_user.id, messages.settings_main, reply_markup=kb.settings)
+    await bot.send_message(m.from_user.id, messages.accessible_settings, reply_markup=kb.settings, parse_mode=ParseMode.MARKDOWN)
 
 
 @dp.message_handler(text='🗑 Видалити показники цукру')
@@ -283,8 +289,22 @@ async def clear_sugar(q: types.CallbackQuery, state: FSMContext):
 
 @dp.message_handler(text='🔄 Змінити одиниці вимірювання')
 async def change_units_processing(m: types.Message):
-    await Settings.change_units.set()
-    await bot.send_message(m.from_user.id, messages.choice_units, reply_markup=kb.reg)
+    await Settings.change_units_confirm.set()
+    await bot.send_message(m.from_user.id, messages.units_change_warn, reply_markup=kb.confirm, parse_mode=ParseMode.MARKDOWN)
+
+
+@dp.callback_query_handler(state=Settings.change_units_confirm)
+async def change_units_confirm_processing(q: types.CallbackQuery, state: FSMContext):
+    try:
+        if q.data == 'yes':
+            await Settings.change_units.set()
+            await bot.send_message(q.from_user.id, messages.choice_units, reply_markup=kb.reg)
+        elif q.data == 'no':
+            await state.finish()
+            await bot.send_message(q.from_user.id, messages.canceled, reply_markup=kb.settings)
+    except Exception as e:
+        await state.finish()
+        logging.error(e.__class__.__name__ + ': ' + str(e))
 
 
 @dp.callback_query_handler(state=Settings.change_units)
@@ -295,9 +315,12 @@ async def change_units(q: types.CallbackQuery, state: FSMContext):
             await state.finish()
             await bot.send_message(q.from_user.id, messages.units_identical_error, reply_markup=kb.settings)
         else:
-            await state.finish()
+            sugar[q.from_user.id].delete()
+            sugar[q.from_user.id] = defaultSugar
+            sugar[q.from_user.id].save()
             user[q.from_user.id]['units'] = q.data
             user[q.from_user.id].save()
+            await state.finish()
             await bot.send_message(q.from_user.id, messages.units_changed, reply_markup=kb.settings)
     except Exception as e:
         await state.finish()
@@ -306,7 +329,7 @@ async def change_units(q: types.CallbackQuery, state: FSMContext):
 
 @dp.message_handler(text='ℹ Інформація')
 async def information(m: types.Message):
-    await bot.send_message(m.from_user.id, messages.accessible, reply_markup=kb.info)
+    await bot.send_message(m.from_user.id, messages.accessible_info, reply_markup=kb.info, parse_mode=ParseMode.MARKDOWN)
 
 
 @dp.message_handler(text='👤 Творець')
@@ -334,4 +357,4 @@ async def send_rating(q: types.CallbackQuery, state: FSMContext):
 
 @dp.message_handler(text='🆘 Допомога')
 async def send_help(m: types.Message):
-    await bot.send_message(m.from_user.id, messages._help, reply_markup=kb.author, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
+    await bot.send_message(m.from_user.id, messages.sos, reply_markup=kb.author, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)

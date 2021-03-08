@@ -9,7 +9,7 @@ main_keyboard.row(KeyboardButton('⚙ Налаштування'), KeyboardButton
 sugar = ReplyKeyboardMarkup(resize_keyboard=True)
 sugar.row(KeyboardButton('➕ Додати показник'))
 sugar.row(KeyboardButton('🔘 Середній показник'), KeyboardButton('🔘 Усі показники'))
-sugar.row(KeyboardButton('➡️ З мг/дл до ммоль/л'), KeyboardButton('➡️ З ммоль/л до мг/дл'))
+sugar.row(KeyboardButton('мг/дл ➡ ммоль/л'), KeyboardButton('ммоль/л ➡ мг/дл'))
 sugar.row(KeyboardButton('🔙 Назад'))
 
 
