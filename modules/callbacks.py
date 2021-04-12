@@ -236,6 +236,7 @@ async def all_sugar_processing(m: types.Message):
 async def all_sugar(q: types.CallbackQuery, state: FSMContext):
     try:
         result = []
+        # mon_result = []
         now_day = datetime.now().strftime('%d')
         now_month = datetime.now().strftime('%m')
         _all = sugar[q.from_user.id]['sugars']
@@ -244,10 +245,10 @@ async def all_sugar(q: types.CallbackQuery, state: FSMContext):
                 date = i[j].split('/')
                 if q.data == 'midsug_day':
                     if date[1] == now_day:
-                        result.append(float(j))
+                        result.append(f"{j} - {i[j].split('/')[3]}:{i[j].split('/')[4]}:{i[j].split('/')[5]}")
                 elif q.data == 'midsug_month':
                     if date[0] == now_month:
-                        result.append(float(j))
+                        result.append(f"{j} - {i[j].split('/')[3]}:{i[j].split('/')[4]}:{i[j].split('/')[5]}")
         if q.data == 'midsug_day':
             await bot.send_message(q.from_user.id, messages.all_sug_day.format('\n'.join('🔹' + str(a) for a in result)))
             await state.finish()
