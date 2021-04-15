@@ -38,6 +38,11 @@ class Rating(StatesGroup):
     send_rating = State()
 
 
+class Convert(StatesGroup):
+    mg_to_moll_state = State()
+    moll_to_mg_state = State()
+
+
 @dp.message_handler(commands=['del'])
 async def delete_user(m: types.Message):
     try:
@@ -53,7 +58,7 @@ async def cancel(m: types.Message, state: FSMContext):
     """
     Ця функція закінчує будь-який діалог з користувачем
     """
-    if m.text == "Відміна" or m.text == 'відміна' or 'skip' in m.text:
+    if m.text == "Відміна" or m.text == 'відміна' or 'cancel' in m.text:
         await state.finish()
         await bot.send_message(m.from_user.id, messages.canceled, reply_markup=kb.main_keyboard)
     else:
@@ -193,6 +198,7 @@ async def middle_sugar_choice(m: types.Message):
 
 @dp.callback_query_handler(state=Sugar.mid_sugar)
 async def middle_sugar_processing(q: types.CallbackQuery, state: FSMContext):
+    await q.answer()
     if q.data == 'midsug_day' or q.data == 'midsug_month':
         try:
             now_day = datetime.now().strftime('%d')
@@ -234,6 +240,7 @@ async def all_sugar_processing(m: types.Message):
 
 @dp.callback_query_handler(state=Sugar.all_sugar)
 async def all_sugar(q: types.CallbackQuery, state: FSMContext):
+    await q.answer()
     try:
         result = []
         # mon_result = []
@@ -260,6 +267,34 @@ async def all_sugar(q: types.CallbackQuery, state: FSMContext):
         logging.error(e.__class__.__name__ + ': ' + str(e))
 
 
+@dp.message_handler(text='мг/дл ➡ ммоль/л')
+async def mg_to_moll_get(m: types.Message, state: FSMContext):
+    await Convert.mg_to_moll_state.set()
+    await bot.send_message(m.from_user.id, messages.mg_to_moll_get)
+
+
+@dp.message_handler(state=Convert.mg_to_moll_state)
+async def mg_to_moll_result(m: types.Message, state: FSMContext):
+    mg = float(m.text)
+    r = mg / 18
+    await bot.send_message(m.from_user.id, messages.mg_to_moll_result.format(mg, '{:.1f}'.format(r)))
+    await state.finish()
+
+
+@dp.message_handler(text='ммоль/л ➡ мг/дл')
+async def moll_to_mg_get(m: types.Message, state: FSMContext):
+    await Convert.moll_to_mg_state.set()
+    await bot.send_message(m.from_user.id, messages.moll_to_mg_get)
+
+
+@dp.message_handler(state=Convert.moll_to_mg_state)
+async def moll_to_mg_result(m: types.Message, state: FSMContext):
+    moll = float(m.text)
+    r = moll * 18
+    await bot.send_message(m.from_user.id, messages.moll_to_mg_result.format(moll, '{:.1f}'.format(r)))
+    await state.finish()
+
+
 @dp.message_handler(text='⚙ Налаштування')
 async def settings_processing(m: types.Message):
     await bot.send_message(m.from_user.id, messages.accessible_settings, reply_markup=kb.settings, parse_mode=ParseMode.MARKDOWN)
@@ -273,6 +308,7 @@ async def clear_sugar_processing(m: types.Message):
 
 @dp.callback_query_handler(state=Settings.clear_sugar_confirm)
 async def clear_sugar(q: types.CallbackQuery, state: FSMContext):
+    await q.answer()
     try:
         if q.data == 'yes':
             sugar[q.from_user.id].delete()
@@ -296,6 +332,7 @@ async def change_units_processing(m: types.Message):
 
 @dp.callback_query_handler(state=Settings.change_units_confirm)
 async def change_units_confirm_processing(q: types.CallbackQuery, state: FSMContext):
+    await q.answer()
     try:
         if q.data == 'yes':
             await Settings.change_units.set()
@@ -310,6 +347,7 @@ async def change_units_confirm_processing(q: types.CallbackQuery, state: FSMCont
 
 @dp.callback_query_handler(state=Settings.change_units)
 async def change_units(q: types.CallbackQuery, state: FSMContext):
+    await q.answer()
     try:
         units = user[q.from_user.id]['units']
         if q.data == units:
@@ -346,6 +384,7 @@ async def rating(m: types.Message):
 
 @dp.callback_query_handler(state=Rating.send_rating)
 async def send_rating(q: types.CallbackQuery, state: FSMContext):
+    await q.answer()
     try:
         id = 614259495
         await bot.send_message(id, messages.rating_to_developer.format(q.from_user.username, q.data, str(datetime.now())), parse_mode=ParseMode.MARKDOWN)
