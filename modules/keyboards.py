@@ -2,7 +2,7 @@ from aiogram.types import ReplyKeyboardRemove, ReplyKeyboardMarkup, InlineKeyboa
 
 
 main_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-main_keyboard.row(KeyboardButton('📊 Статистика'), KeyboardButton('🍬 Цукор'))
+main_keyboard.row(KeyboardButton('📊 Статистика'), KeyboardButton('🍬 Цукор'), KeyboardButton('🍎 Їжа'))
 main_keyboard.row(KeyboardButton('⚙ Налаштування'), KeyboardButton('ℹ Інформація'))
 
 

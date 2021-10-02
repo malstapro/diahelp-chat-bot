@@ -6,6 +6,9 @@ from aiogram.types import ParseMode
 import logging
 import asyncio
 from datetime import datetime
+# import matplotlib.pyplot as plt
+from fuzzywuzzy import fuzz
+from fuzzywuzzy import process
 
 from modules import keyboards as kb
 from modules import database as db
@@ -16,6 +19,7 @@ bot = Bot(token=credentials.TOKEN)
 dp = Dispatcher(bot, storage=MemoryStorage())
 user = db.DataBase('users', 'users', credentials.MONGO_TOKEN, '_id')
 sugar = db.DataBase('sugars', 'sugars', credentials.MONGO_TOKEN, '_id')
+food = db.DataBase('food', 'food', credentials.MONGO_TOKEN, '_id')
 logging.basicConfig(filename='diahelpbot.log', format='%(levelname)s : %(asctime)s | %(name)s : %(message)s')
 dt_format = "%m/%d/%Y/%H/%M/%S"
 defaultSugar = {
@@ -41,6 +45,10 @@ class Rating(StatesGroup):
 class Convert(StatesGroup):
     mg_to_moll_state = State()
     moll_to_mg_state = State()
+
+
+class FoodSearch(StatesGroup):
+    search = State()
 
 
 @dp.message_handler(commands=['del'])
@@ -91,41 +99,16 @@ async def back_to_menu(m: types.Message):
 @dp.message_handler(text='📊 Статистика')
 async def statistics(m: types.Message):
     try:
-        pass
-        maxsug = 0
-        midsug = 0
-        minsug = 630.63
-        now_day = datetime.now().strftime('%d')
-        try:
-            pass
-        #     for i in sugar[m.from_user.id]['sugars']:
-        #         for key in i:
-        #             date = i[key].split('/')
-        #             if date[1] == now_day:
-        #                 if float(key) > maxsug:
-        #                     maxsug = float(key)
-        #                 if float(key) < minsug:
-        #                     minsug = float(key)
-        #     if maxsug == 0:
-        #         maxsug = messages.not_found
-        #     if minsug == 630.63:
-        #         minsug = messages.not_found
-        #     lst = []
-        #     result = 0
-        #     for i in sugar[m.from_user.id]['sugars']:
-        #         for key in i:
-        #             date = i[key].split('/')
-        #             if date[1] == now_day:
-        #                 lst.append(float(key))
-        #     for j in lst:
-        #         result += j
-        #     midsug = '{:.1f}'.format(result / len(lst))
-        except ZeroDivisionError or TypeError:
-            pass
-            # midsug = messages.not_found
-        # await bot.send_message(m.from_user.id, messages.statistics.format(maxsug, midsug, minsug),
-        #                        parse_mode=ParseMode.MARKDOWN)
         await bot.send_message(m.from_user.id, 'Функція виводу статистики зараз не працює. Якщо у вас виникли питання зверниться до розробника @tesla33io')
+        # sugars = sugar[m.from_user.id]['sugars'][f'{datetime.now().year}'][f'{datetime.now().month}'][f'{datetime.now().day}']
+        # time_list = []
+        # index_list = []
+        #
+        # for time in sugars:
+        #     time_list.append(int(str(time).replace('-', '')))
+        #     index_list.append(float(str(sugars[time])))
+        # plt.bar(time_list, index_list)
+        # plt.show()
     except Exception as e:
         logging.error(e.__class__.__name__ + ': ' + str(e))
 
@@ -323,6 +306,19 @@ async def moll_to_mg_result(m: types.Message, state: FSMContext):
     r = moll * 18
     await bot.send_message(m.from_user.id, messages.moll_to_mg_result.format(moll, '{:.1f}'.format(r)))
     await state.finish()
+
+
+# @dp.message_handler(text='🍎 Їжа')
+# async def food(m: types.Message, state: FSMContext):
+#     await FoodSearch.search.set()
+#     await bot.send_message(m.from_user.id, messages.select_food)
+
+
+# @dp.message_handler(state=FoodSearch.search)
+# async def food_search(m: types.Message, state: FSMContext):
+#     name = m.text
+#     for i in food[1]:
+#
 
 
 @dp.message_handler(text='⚙ Налаштування')
