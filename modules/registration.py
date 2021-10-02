@@ -8,13 +8,22 @@ from modules import database as db
 from modules import credentials
 from modules import messages
 from modules.callbacks import bot, dp, user, sugar
+from datetime import datetime
 
 
 defaultUser = {
     'units': None
 }
 defaultSugar = {
-    'sugars': []
+    'sugars': {
+        f'{datetime.now().year}': {
+            f'{datetime.now().month}': {
+                f'{datetime.now().day}': {
+
+                }
+            }
+        }
+    }
 }
 
 

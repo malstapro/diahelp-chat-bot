@@ -91,37 +91,41 @@ async def back_to_menu(m: types.Message):
 @dp.message_handler(text='📊 Статистика')
 async def statistics(m: types.Message):
     try:
+        pass
         maxsug = 0
         midsug = 0
         minsug = 630.63
         now_day = datetime.now().strftime('%d')
         try:
-            for i in sugar[m.from_user.id]['sugars']:
-                for key in i:
-                    date = i[key].split('/')
-                    if date[1] == now_day:
-                        if float(key) > maxsug:
-                            maxsug = float(key)
-                        if float(key) < minsug:
-                            minsug = float(key)
-            if maxsug == 0:
-                maxsug = messages.not_found
-            if minsug == 630.63:
-                minsug = messages.not_found
-            lst = []
-            result = 0
-            for i in sugar[m.from_user.id]['sugars']:
-                for key in i:
-                    date = i[key].split('/')
-                    if date[1] == now_day:
-                        lst.append(float(key))
-            for j in lst:
-                result += j
-            midsug = '{:.1f}'.format(result / len(lst))
+            pass
+        #     for i in sugar[m.from_user.id]['sugars']:
+        #         for key in i:
+        #             date = i[key].split('/')
+        #             if date[1] == now_day:
+        #                 if float(key) > maxsug:
+        #                     maxsug = float(key)
+        #                 if float(key) < minsug:
+        #                     minsug = float(key)
+        #     if maxsug == 0:
+        #         maxsug = messages.not_found
+        #     if minsug == 630.63:
+        #         minsug = messages.not_found
+        #     lst = []
+        #     result = 0
+        #     for i in sugar[m.from_user.id]['sugars']:
+        #         for key in i:
+        #             date = i[key].split('/')
+        #             if date[1] == now_day:
+        #                 lst.append(float(key))
+        #     for j in lst:
+        #         result += j
+        #     midsug = '{:.1f}'.format(result / len(lst))
         except ZeroDivisionError or TypeError:
-            midsug = messages.not_found
-        await bot.send_message(m.from_user.id, messages.statistics.format(maxsug, midsug, minsug),
-                               parse_mode=ParseMode.MARKDOWN)
+            pass
+            # midsug = messages.not_found
+        # await bot.send_message(m.from_user.id, messages.statistics.format(maxsug, midsug, minsug),
+        #                        parse_mode=ParseMode.MARKDOWN)
+        await bot.send_message(m.from_user.id, 'Функція виводу статистики зараз не працює. Якщо у вас виникли питання зверниться до розробника @tesla33io')
     except Exception as e:
         logging.error(e.__class__.__name__ + ': ' + str(e))
 
@@ -132,10 +136,20 @@ async def sugar_processing(m: types.Message):
 
 
 @dp.message_handler(text='➕ Додати показник')
-async def save_index(m: types.Message):
-    await Sugar.add_to_db.set()
-    _min = "81.08" if user[m.from_user.id]['units'] == 'units_mg' else "4.5"
-    await bot.send_message(m.from_user.id, messages.send_sugar.format(_min), parse_mode=ParseMode.MARKDOWN)
+async def save_index(m: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        try:
+            if data['add-sugar-last-time'].day >= datetime.now().day and data['add-sugar-last-time'].hour >= datetime.now().hour and (datetime.now().minute - data['add-sugar-last-time'].minute) >= 5:
+                await Sugar.add_to_db.set()
+                _min = "81.08" if user[m.from_user.id]['units'] == 'units_mg' else "4.5"
+                await bot.send_message(m.from_user.id, messages.send_sugar.format(_min), parse_mode=ParseMode.MARKDOWN)
+            else:
+                # print(datetime.now().minute - data['add-sugar-last-time'].minute)
+                await bot.send_message(m.from_user.id, messages.waite_add_sugar.format(5 - (datetime.now().minute - data['add-sugar-last-time'].minute)), parse_mode=ParseMode.MARKDOWN)
+        except KeyError:
+            await Sugar.add_to_db.set()
+            _min = "81.08" if user[m.from_user.id]['units'] == 'units_mg' else "4.5"
+            await bot.send_message(m.from_user.id, messages.send_sugar.format(_min), parse_mode=ParseMode.MARKDOWN)
 
 
 @dp.message_handler(state=Sugar.add_to_db)
@@ -156,10 +170,13 @@ async def add_to_db(m: types.Message, state: FSMContext):
             _max = 35
             _min = 1
         if (index >= _min) and (index <= _max):
-            _all = sugar[m.from_user.id]['sugars']
-            _all.append({str(index):datetime.now().strftime(dt_format)})
-            sugar[m.from_user.id]['sugars'] = _all
+            # _all = sugar[m.from_user.id]['sugars']
+            # _all.append({str(index):datetime.now().strftime(dt_format)})
+            # sugar[m.from_user.id]['sugars'] = _all
+            sugar[m.from_user.id]['sugars'][f'{datetime.now().year}'][f'{datetime.now().month}'][f'{datetime.now().day}'][f'{datetime.now().hour}-{datetime.now().minute}'] = str(index)
             sugar[m.from_user.id].save()
+            async with state.proxy() as data:
+                data['add-sugar-last-time'] = datetime.now()
             await bot.send_message(m.from_user.id, messages.index_saved)
             if units and index <= 72.07:
                 await bot.send_message(m.from_user.id, messages.if_too_low_index)
@@ -233,9 +250,11 @@ async def middle_sugar_processing(q: types.CallbackQuery, state: FSMContext):
 
 
 @dp.message_handler(text='🔘 Усі показники')
-async def all_sugar_processing(m: types.Message):
+async def all_sugar_processing(m: types.Message, state: FSMContext):
     await Sugar.all_sugar.set()
-    await bot.send_message(m.from_user.id, messages.all_sug_choice, reply_markup=kb.period_sug_choice)
+    async with state.proxy() as data:
+        msg = await bot.send_message(m.from_user.id, messages.all_sug_choice, reply_markup=kb.period_sug_choice)
+        data['all_sug_msg'] = msg.message_id
 
 
 @dp.callback_query_handler(state=Sugar.all_sugar)
@@ -244,23 +263,34 @@ async def all_sugar(q: types.CallbackQuery, state: FSMContext):
     try:
         result = []
         # mon_result = []
-        now_day = datetime.now().strftime('%d')
-        now_month = datetime.now().strftime('%m')
+        now_day = datetime.now().day
+        now_month = datetime.now().month
         _all = sugar[q.from_user.id]['sugars']
-        for i in _all:
-            for j in i:
-                date = i[j].split('/')
-                if q.data == 'midsug_day':
-                    if date[1] == now_day:
-                        result.append(f"{j} - {i[j].split('/')[3]}:{i[j].split('/')[4]}:{i[j].split('/')[5]}")
-                elif q.data == 'midsug_month':
-                    if date[0] == now_month:
-                        result.append(f"{j} - {i[j].split('/')[3]}:{i[j].split('/')[4]}:{i[j].split('/')[5]}")
+        # for i in _all:
+        #     for j in i:
+        #         date = i[j].split('/')
+        #         if q.data == 'midsug_day':
+        #             if date[1] == now_day:
+        #                 result.append(f"{j} - {i[j].split('/')[3]}:{i[j].split('/')[4]}:{i[j].split('/')[5]}")
+        #         elif q.data == 'midsug_month':
+        #             if date[0] == now_month:
+        #                 result.append(f"{j} - {i[j].split('/')[3]}:{i[j].split('/')[4]}:{i[j].split('/')[5]}")
         if q.data == 'midsug_day':
-            await bot.send_message(q.from_user.id, messages.all_sug_day.format('\n'.join('🔹' + str(a) for a in result)))
+            # await bot.send_message(q.from_user.id, messages.all_sug_day.format('\n'.join('🔹' + str(a) for a in result)))
+            day_sugars = sugar[q.from_user.id]['sugars'][f'{datetime.now().year}'][f'{datetime.now().month}'][f'{datetime.now().day}']
+            for sug in day_sugars:
+                result.append(f'🔸 {str(sug).replace("-",":")} - {day_sugars[sug]}')
+            async with state.proxy() as data:
+                await bot.edit_message_text(messages.all_sug_day.format('\n'.join(str(a) for a in result)), q.from_user.id, data['all_sug_msg'])
             await state.finish()
         elif q.data == 'midsug_month':
-            await bot.send_message(q.from_user.id, messages.all_sug_month.format('\n'.join('🔹' + str(a) for a in result)))
+            # await bot.send_message(q.from_user.id, messages.all_sug_month.format('\n'.join('🔹' + str(a) for a in result)))
+            mon_sugars = sugar[q.from_user.id]['sugars'][f'{datetime.now().year}'][f'{datetime.now().month}']
+            for day in mon_sugars:
+                for sug in mon_sugars[str(day)]:
+                    result.append(f'🔸 {datetime.now().month}.{day} - {str(sug).replace("-",":")} - {mon_sugars[str(day)][sug]}')
+            async with state.proxy() as data:
+                await bot.edit_message_text(messages.all_sug_month.format('\n'.join(str(a) for a in result)), q.from_user.id, data['all_sug_msg'])
             await state.finish()
     except Exception as e:
         await state.finish()
