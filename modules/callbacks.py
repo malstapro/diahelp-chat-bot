@@ -3,7 +3,7 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import Dispatcher, FSMContext
 from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.types import ParseMode
-import logging
+from loguru import logger
 import asyncio
 from datetime import datetime
 # import matplotlib.pyplot as plt
@@ -20,7 +20,7 @@ dp = Dispatcher(bot, storage=MemoryStorage())
 user = db.DataBase('users', 'users', credentials.MONGO_TOKEN, '_id')
 sugar = db.DataBase('sugars', 'sugars', credentials.MONGO_TOKEN, '_id')
 food = db.DataBase('food', 'food', credentials.MONGO_TOKEN, '_id')
-logging.basicConfig(filename='diahelpbot.log', format='%(levelname)s : %(asctime)s | %(name)s : %(message)s')
+logger.add("diahelpbot.log", format="[{time}] ({level}) - {message}", level="INFO")
 dt_format = "%m/%d/%Y/%H/%M/%S"
 defaultSugar = {
     'sugars': []
@@ -58,7 +58,7 @@ async def delete_user(m: types.Message):
         sugar[m.from_user.id].delete()
         await bot.send_message(m.from_user.id, "Користувач успішно видален з бази даних!", reply_markup=types.ReplyKeyboardRemove())
     except Exception as e:
-        logging.error(e)
+        logger.error(e)
 
 
 @dp.message_handler(lambda d: d.text == "Відміна" or d.text == 'відміна' or d.text == 'cancel' or d.text == '/cancel', state="*")
@@ -110,7 +110,7 @@ async def statistics(m: types.Message):
         # plt.bar(time_list, index_list)
         # plt.show()
     except Exception as e:
-        logging.error(e.__class__.__name__ + ': ' + str(e))
+        logger.error(e.__class__.__name__ + ': ' + str(e))
 
 
 @dp.message_handler(text='🍬 Цукор')
@@ -140,6 +140,7 @@ async def add_to_db(m: types.Message, state: FSMContext):
     try:
         await state.finish()
         index = float(m.text)
+        print(type(index))
         _max = 0
         _min = 0
         units = True if user[m.from_user.id]['units'] == 'units_mg' else False
@@ -177,11 +178,13 @@ async def add_to_db(m: types.Message, state: FSMContext):
             _min = "63.06" if user[m.from_user.id]['units'] == 'units_mg' else "3.5"
             await bot.send_message(m.from_user.id, messages.send_sugar.format(_min), parse_mode=ParseMode.MARKDOWN)
     except Exception as e:
-        logging.error(e.__class__.__name__ + ': ' + str(e))
+        logger.error(e.__class__.__name__ + ': ' + str(e))
         await state.finish()
         if e.__class__.__name__ == ValueError and (m.text == "Відміна" or m.text == 'відміна' or 'cancel' in m.text):
             await state.finish()
             await bot.send_message(m.from_user.id, messages.canceled)
+        elif e.__class__.__name__ == KeyError:
+            pass
         else:
             await Sugar.add_to_db.set()
             _min = "63.06" if user[m.from_user.id]['units'] == 'units_mg' else "3.5"
@@ -229,7 +232,7 @@ async def middle_sugar_processing(q: types.CallbackQuery, state: FSMContext):
             await state.finish()
         except Exception as e:
             await state.finish()
-            logging.error(e.__class__.__name__ + ': ' + str(e))
+            logger.error(e.__class__.__name__ + ': ' + str(e))
 
 
 @dp.message_handler(text='🔘 Усі показники')
@@ -277,7 +280,7 @@ async def all_sugar(q: types.CallbackQuery, state: FSMContext):
             await state.finish()
     except Exception as e:
         await state.finish()
-        logging.error(e.__class__.__name__ + ': ' + str(e))
+        logger.error(e.__class__.__name__ + ': ' + str(e))
 
 
 @dp.message_handler(text='мг/дл ➡ ммоль/л')
@@ -347,7 +350,7 @@ async def clear_sugar(q: types.CallbackQuery, state: FSMContext):
             await bot.send_message(q.from_user.id, messages.canceled, reply_markup=kb.settings)
     except Exception as e:
         await state.finish()
-        logging.error(e.__class__.__name__ + ': ' + str(e))
+        logger.error(e.__class__.__name__ + ': ' + str(e))
 
 
 @dp.message_handler(text='🔄 Змінити одиниці вимірювання')
@@ -368,7 +371,7 @@ async def change_units_confirm_processing(q: types.CallbackQuery, state: FSMCont
             await bot.send_message(q.from_user.id, messages.canceled, reply_markup=kb.settings)
     except Exception as e:
         await state.finish()
-        logging.error(e.__class__.__name__ + ': ' + str(e))
+        logger.error(e.__class__.__name__ + ': ' + str(e))
 
 
 @dp.callback_query_handler(state=Settings.change_units)
@@ -389,7 +392,7 @@ async def change_units(q: types.CallbackQuery, state: FSMContext):
             await bot.send_message(q.from_user.id, messages.units_changed, reply_markup=kb.settings)
     except Exception as e:
         await state.finish()
-        logging.error(e.__class__.__name__ + ': ' + str(e))
+        logger.error(e.__class__.__name__ + ': ' + str(e))
 
 
 @dp.message_handler(text='ℹ Інформація')
@@ -418,7 +421,7 @@ async def send_rating(q: types.CallbackQuery, state: FSMContext):
         await state.finish()
     except Exception as e:
         await state.finish()
-        logging.error(e.__class__.__name__ + ': ' + str(e))
+        logger.error(e.__class__.__name__ + ': ' + str(e))
 
 
 @dp.message_handler(text='🆘 Допомога')
