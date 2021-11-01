@@ -6,6 +6,7 @@ from aiogram.types import ParseMode
 from loguru import logger
 import asyncio
 from datetime import datetime
+import pytz
 # import matplotlib.pyplot as plt
 from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
@@ -122,13 +123,13 @@ async def sugar_processing(m: types.Message):
 async def save_index(m: types.Message, state: FSMContext):
     async with state.proxy() as data:
         try:
-            if data['add-sugar-last-time'].day >= datetime.now().day and data['add-sugar-last-time'].hour >= datetime.now().hour and (datetime.now().minute - data['add-sugar-last-time'].minute) >= 5:
+            if data['add-sugar-last-time'].day >= datetime.now(tz=pytz.timezone("Europe/Kiev")).day and data['add-sugar-last-time'].hour >= datetime.now(tz=pytz.timezone("Europe/Kiev")).hour and (datetime.now(tz=pytz.timezone("Europe/Kiev")).minute - data['add-sugar-last-time'].minute) >= 5:
                 await Sugar.add_to_db.set()
                 _min = "81.08" if user[m.from_user.id]['units'] == 'units_mg' else "4.5"
                 await bot.send_message(m.from_user.id, messages.send_sugar.format(_min), parse_mode=ParseMode.MARKDOWN)
             else:
                 # print(datetime.now().minute - data['add-sugar-last-time'].minute)
-                await bot.send_message(m.from_user.id, messages.waite_add_sugar.format(5 - (datetime.now().minute - data['add-sugar-last-time'].minute)), parse_mode=ParseMode.MARKDOWN)
+                await bot.send_message(m.from_user.id, messages.waite_add_sugar.format(5 - (datetime.now(tz=pytz.timezone("Europe/Kiev")).minute - data['add-sugar-last-time'].minute)), parse_mode=ParseMode.MARKDOWN)
         except KeyError:
             await Sugar.add_to_db.set()
             _min = "81.08" if user[m.from_user.id]['units'] == 'units_mg' else "4.5"
@@ -159,10 +160,10 @@ async def add_to_db(m: types.Message, state: FSMContext):
             # _all = sugar[m.from_user.id]['sugars']
             # _all.append({str(index):datetime.now().strftime(dt_format)})
             # sugar[m.from_user.id]['sugars'] = _all
-            sugar[m.from_user.id]['sugars'][f'{datetime.now().year}'][f'{datetime.now().month}'][f'{datetime.now().day}'][f'{datetime.now().hour}-{datetime.now().minute}'] = str(index)
+            sugar[m.from_user.id]['sugars'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).year}'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).month}'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).day}'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).hour}-{datetime.now(tz=pytz.timezone("Europe/Kiev")).minute}'] = str(index)
             sugar[m.from_user.id].save()
             async with state.proxy() as data:
-                data['add-sugar-last-time'] = datetime.now()
+                data['add-sugar-last-time'] = datetime.now(tz=pytz.timezone("Europe/Kiev"))
             # await bot.send_message(m.from_user.id, messages.index_saved)
             # if units and index <= 72.07:
             #     await bot.send_message(m.from_user.id, messages.if_too_low_index)
@@ -180,7 +181,7 @@ async def add_to_db(m: types.Message, state: FSMContext):
             _min = "63.06" if user[m.from_user.id]['units'] == 'units_mg' else "3.5"
             await bot.send_message(m.from_user.id, messages.send_sugar.format(_min), parse_mode=ParseMode.MARKDOWN)
     except KeyError:
-        sugar[m.from_user.id]['sugars'][f'{datetime.now().year}'][f'{datetime.now().month}'] = {f'{datetime.now().day}': {f'{datetime.now().hour}-{datetime.now().minute}':str(index)}}
+        sugar[m.from_user.id]['sugars'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).year}'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).month}'] = {f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).day}': {f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).hour}-{datetime.now(tz=pytz.timezone("Europe/Kiev")).minute}': str(index)}}
         sugar[m.from_user.id].save()
         # sugar[m.from_user.id]['sugars'][f'{datetime.now().year}'][f'{datetime.now().month}'][f'{datetime.now().day}'] = [f'{datetime.now().hour}-{datetime.now().minute}']
         # sugar[m.from_user.id].save()
@@ -223,8 +224,8 @@ async def middle_sugar_processing(q: types.CallbackQuery, state: FSMContext):
     await q.answer()
     if q.data == 'midsug_day' or q.data == 'midsug_month':
         try:
-            now_day = datetime.now().strftime('%d')
-            now_month = datetime.now().strftime('%m')
+            now_day = datetime.now(tz=pytz.timezone("Europe/Kiev")).strftime('%d')
+            now_month = datetime.now(tz=pytz.timezone("Europe/Kiev")).strftime('%m')
             _all = sugar[q.from_user.id]['sugars']
             result = []
             for i in _all:
@@ -268,8 +269,8 @@ async def all_sugar(q: types.CallbackQuery, state: FSMContext):
     try:
         result = []
         # mon_result = []
-        now_day = datetime.now().day
-        now_month = datetime.now().month
+        now_day = datetime.now(tz=pytz.timezone("Europe/Kiev")).day
+        now_month = datetime.now(tz=pytz.timezone("Europe/Kiev")).month
         _all = sugar[q.from_user.id]['sugars']
         # for i in _all:
         #     for j in i:
@@ -282,7 +283,7 @@ async def all_sugar(q: types.CallbackQuery, state: FSMContext):
         #                 result.append(f"{j} - {i[j].split('/')[3]}:{i[j].split('/')[4]}:{i[j].split('/')[5]}")
         if q.data == 'midsug_day':
             # await bot.send_message(q.from_user.id, messages.all_sug_day.format('\n'.join('🔹' + str(a) for a in result)))
-            day_sugars = sugar[q.from_user.id]['sugars'][f'{datetime.now().year}'][f'{datetime.now().month}'][f'{datetime.now().day}']
+            day_sugars = sugar[q.from_user.id]['sugars'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).year}'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).month}'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).day}']
             for sug in day_sugars:
                 result.append(f'🔸 {str(sug).replace("-",":")} - {day_sugars[sug]}')
             async with state.proxy() as data:
@@ -293,7 +294,7 @@ async def all_sugar(q: types.CallbackQuery, state: FSMContext):
             mon_sugars = sugar[q.from_user.id]['sugars'][f'{datetime.now().year}'][f'{datetime.now().month}']
             for day in mon_sugars:
                 for sug in mon_sugars[str(day)]:
-                    result.append(f'🔸 {datetime.now().month}.{day} - {str(sug).replace("-",":")} - {mon_sugars[str(day)][sug]}')
+                    result.append(f'🔸 {datetime.now(tz=pytz.timezone("Europe/Kiev")).month}.{day} - {str(sug).replace("-",":")} - {mon_sugars[str(day)][sug]}')
             async with state.proxy() as data:
                 await bot.edit_message_text(messages.all_sug_month.format('\n'.join(str(a) for a in result)), q.from_user.id, data['all_sug_msg'])
             await state.finish()

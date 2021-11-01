@@ -1,0 +1,1 @@
+01.11.21 - DataBase update. Save sugar index update. TODO: add costume user timezone
