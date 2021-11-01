@@ -137,12 +137,14 @@ async def save_index(m: types.Message, state: FSMContext):
 
 @dp.message_handler(state=Sugar.add_to_db)
 async def add_to_db(m: types.Message, state: FSMContext):
+    global units
     try:
         await state.finish()
         index = float(m.text)
         print(type(index))
         _max = 0
         _min = 0
+        global units
         units = True if user[m.from_user.id]['units'] == 'units_mg' else False
         '''
         Якщо істина, значить одиниці вимірювання користувача - мг/дл, якщо ж брехня - ммоль/л
@@ -161,15 +163,15 @@ async def add_to_db(m: types.Message, state: FSMContext):
             sugar[m.from_user.id].save()
             async with state.proxy() as data:
                 data['add-sugar-last-time'] = datetime.now()
-            await bot.send_message(m.from_user.id, messages.index_saved)
-            if units and index <= 72.07:
-                await bot.send_message(m.from_user.id, messages.if_too_low_index)
-            elif units and index >= 234.23:
-                await bot.send_message(m.from_user.id, messages.if_too_high_index)
-            if not units and index <= 4.0:
-                await bot.send_message(m.from_user.id, messages.if_too_low_index)
-            elif not units and index >= 11.0:
-                await bot.send_message(m.from_user.id, messages.if_too_high_index)
+            # await bot.send_message(m.from_user.id, messages.index_saved)
+            # if units and index <= 72.07:
+            #     await bot.send_message(m.from_user.id, messages.if_too_low_index)
+            # elif units and index >= 234.23:
+            #     await bot.send_message(m.from_user.id, messages.if_too_high_index)
+            # if not units and index <= 4.0:
+            #     await bot.send_message(m.from_user.id, messages.if_too_low_index)
+            # elif not units and index >= 11.0:
+            #     await bot.send_message(m.from_user.id, messages.if_too_high_index)
         else:
             hint = "_Мінімальний показник для одиниць вимірювання_ *мг/дл* - _18.02, максимальний показник - 630.63_" if user[m.from_user.id]['units'] == 'units_mg' \
                 else "_Мінімальний показник для одиниць вимірювання_ *ммоль/л* - _1.0, максимальний показник - 35.0_"
@@ -177,6 +179,13 @@ async def add_to_db(m: types.Message, state: FSMContext):
             await asyncio.sleep(3)
             _min = "63.06" if user[m.from_user.id]['units'] == 'units_mg' else "3.5"
             await bot.send_message(m.from_user.id, messages.send_sugar.format(_min), parse_mode=ParseMode.MARKDOWN)
+    except KeyError:
+        sugar[m.from_user.id]['sugars'][f'{datetime.now().year}'][f'{datetime.now().month}'] = {f'{datetime.now().day}': {f'{datetime.now().hour}-{datetime.now().minute}':str(index)}}
+        sugar[m.from_user.id].save()
+        # sugar[m.from_user.id]['sugars'][f'{datetime.now().year}'][f'{datetime.now().month}'][f'{datetime.now().day}'] = [f'{datetime.now().hour}-{datetime.now().minute}']
+        # sugar[m.from_user.id].save()
+        # sugar[m.from_user.id]['sugars'][f'{datetime.now().year}'][f'{datetime.now().month}'][f'{datetime.now().day}'][f'{datetime.now().hour}-{datetime.now().minute}'] = str(index)
+        # sugar[m.from_user.id].save()
     except Exception as e:
         logger.error(e.__class__.__name__ + ': ' + str(e))
         await state.finish()
@@ -191,6 +200,16 @@ async def add_to_db(m: types.Message, state: FSMContext):
             await bot.send_message(m.from_user.id, messages.value_error, parse_mode=ParseMode.MARKDOWN)
             await asyncio.sleep(3)
             await bot.send_message(m.from_user.id, messages.send_sugar.format(_min), parse_mode=ParseMode.MARKDOWN)
+    finally:
+        await bot.send_message(m.from_user.id, messages.index_saved)
+        if units and index <= 72.07:
+            await bot.send_message(m.from_user.id, messages.if_too_low_index)
+        elif units and index >= 234.23:
+            await bot.send_message(m.from_user.id, messages.if_too_high_index)
+        if not units and index <= 4.0:
+            await bot.send_message(m.from_user.id, messages.if_too_low_index)
+        elif not units and index >= 11.0:
+            await bot.send_message(m.from_user.id, messages.if_too_high_index)
 
 
 @dp.message_handler(text='🔘 Середній показник')
