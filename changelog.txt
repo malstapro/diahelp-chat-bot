@@ -1,1 +1,2 @@
 01.11.21 - DataBase update. Save sugar index update. TODO: add costume user timezone
+02.11.21 - Save sugar index system fix. Wait time between save sugar operations output update. TODO: Wait time between save sugar operations output fix

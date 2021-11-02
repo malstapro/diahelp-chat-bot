@@ -7,6 +7,7 @@ from loguru import logger
 import asyncio
 from datetime import datetime
 import pytz
+import math
 # import matplotlib.pyplot as plt
 from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
@@ -129,7 +130,14 @@ async def save_index(m: types.Message, state: FSMContext):
                 await bot.send_message(m.from_user.id, messages.send_sugar.format(_min), parse_mode=ParseMode.MARKDOWN)
             else:
                 # print(datetime.now().minute - data['add-sugar-last-time'].minute)
-                await bot.send_message(m.from_user.id, messages.waite_add_sugar.format(5 - (datetime.now(tz=pytz.timezone("Europe/Kiev")).minute - data['add-sugar-last-time'].minute)), parse_mode=ParseMode.MARKDOWN)
+                # print(m.from_user.id)
+                # print(datetime.now(tz=pytz.timezone("Europe/Kiev")).second)
+                # print(data['add-sugar-last-time'].second)
+                # print(datetime.now(tz=pytz.timezone("Europe/Kiev")).second - data['add-sugar-last-time'].second)
+                # print(60 - datetime.now(tz=pytz.timezone("Europe/Kiev")).second - data['add-sugar-last-time'].second)
+                wait_time_sec = 60 - (datetime.now(tz=pytz.timezone("Europe/Kiev")).second - data['add-sugar-last-time'].second)
+                wait_time_minute = 5 - (datetime.now(tz=pytz.timezone("Europe/Kiev")).minute - data["add-sugar-last-time"].minute)
+                await bot.send_message(m.from_user.id, messages.waite_add_sugar.format(f'{wait_time_minute}:{wait_time_sec}', 'хвилин' if wait_time_minute > 4 else 'хвилини' if wait_time_minute > 1 else 'хвилину'), parse_mode=ParseMode.MARKDOWN)
         except KeyError:
             await Sugar.add_to_db.set()
             _min = "81.08" if user[m.from_user.id]['units'] == 'units_mg' else "4.5"
@@ -160,8 +168,12 @@ async def add_to_db(m: types.Message, state: FSMContext):
             # _all = sugar[m.from_user.id]['sugars']
             # _all.append({str(index):datetime.now().strftime(dt_format)})
             # sugar[m.from_user.id]['sugars'] = _all
-            sugar[m.from_user.id]['sugars'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).year}'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).month}'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).day}'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).hour}-{datetime.now(tz=pytz.timezone("Europe/Kiev")).minute}'] = str(index)
-            sugar[m.from_user.id].save()
+            try:
+                sugar[m.from_user.id]['sugars'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).year}'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).month}'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).day}'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).hour}-{datetime.now(tz=pytz.timezone("Europe/Kiev")).minute}'] = str(index)
+                sugar[m.from_user.id].save()
+            except:
+                sugar[m.from_user.id]['sugars'] = {f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).year}': {f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).month}': {f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).day}': {f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).hour}-{datetime.now(tz=pytz.timezone("Europe/Kiev")).minute}': str(index)}}}}
+                sugar[m.from_user.id].save()
             async with state.proxy() as data:
                 data['add-sugar-last-time'] = datetime.now(tz=pytz.timezone("Europe/Kiev"))
             # await bot.send_message(m.from_user.id, messages.index_saved)
