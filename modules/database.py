@@ -29,7 +29,7 @@ class MongoItem(dict):
         self.base_key = base_key
         self.update(content)
 
-    def save(self):
+    def commit(self):
         self.collection.update_one({self.base_key: self[self.base_key]}, {'$set': self}, upsert=True)
 
     def delete(self):

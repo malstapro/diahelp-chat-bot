@@ -97,19 +97,19 @@ async def send_welcome(message: types.Message):
             [types.InlineKeyboardButton('ммоль/л', callback_data='units_mol')]
         ]))
         user[message.from_user.id] = defaltUser
-        user[message.from_user.id].save()
+        user[message.from_user.id].commit()
         sug[message.from_user.id] = defaltSug
-        sug[message.from_user.id].save()
+        sug[message.from_user.id].commit()
 
 
 @dp.callback_query_handler(lambda query: query.data == "units_mg" or query.data == "units_mol", state=Form.units)
 async def set_units(query, state: FSMContext):
     if query.data == "units_mg":
         user[query.from_user.id]['units'] = 'mg'
-        user[query.from_user.id].save()
+        user[query.from_user.id].commit()
     elif query.data == "units_mol":
         user[query.from_user.id]['units'] = 'mol'
-        user[query.from_user.id].save()
+        user[query.from_user.id].commit()
     else:
         print("Error -- setunits -- query!")
     await state.finish()
@@ -323,7 +323,7 @@ async def addsug(msg: types.Message, state: FSMContext):
             print(s)
             s.update({suger:datetime.now()})
             sug[msg.from_user.id]['sugers'] = s
-            sug[msg.from_user.id].save()
+            sug[msg.from_user.id].commit()
             await msg.answer("Показатель сохранен!")
             await Form.sug.set()
             await msg.answer("Доступные команды", reply_markup=types.ReplyKeyboardMarkup(
@@ -438,7 +438,7 @@ async def clearsug(q: types.InlineQueryResult, state: FSMContext):
     if q.data == 'yes':
         await state.finish()
         sug[q.from_user.id]['sugers'] = {}
-        sug[q.from_user.id].save()
+        sug[q.from_user.id].commit()
         await bot.send_message(chat_id=q.from_user.id, text="Показатели успешно удалены",
                                reply_markup=types.ReplyKeyboardMarkup(keyboard=[
                                    [types.KeyboardButton(text="📊 Статистика")],
