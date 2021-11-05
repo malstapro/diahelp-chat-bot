@@ -1,21 +1,18 @@
 from aiogram import Bot, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import Dispatcher, FSMContext
-from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.types import ParseMode
 from loguru import logger
 import asyncio
 from datetime import datetime, timedelta
 import pytz
-import math
 # import matplotlib.pyplot as plt
-from fuzzywuzzy import fuzz
-from fuzzywuzzy import process
 
 from modules import keyboards as kb
 from modules import database as db
 from modules import credentials
 from modules import messages
+from modules.states import Sugar, Settings, Rating, Convert
 
 bot = Bot(token=credentials.TOKEN)
 dp = Dispatcher(bot, storage=MemoryStorage())
@@ -28,40 +25,14 @@ defaultSugar = {
     'sugars': []
 }
 
-class Sugar(StatesGroup):
-    add_to_db = State()
-    mid_sugar = State()
-    all_sugar = State()
-
-
-class Settings(StatesGroup):
-    clear_sugar_confirm = State()
-    change_units_confirm = State()
-    change_units = State()
-
-
-class Rating(StatesGroup):
-    send_rating = State()
-
-
-class Convert(StatesGroup):
-    mg_to_moll_state = State()
-    moll_to_mg_state = State()
-
-
-class FoodSearch(StatesGroup):
-    search = State()
-
 
 async def finish_state(state: FSMContext):
     try:
         async with state.proxy() as data:
             tmp = data['add-sugar-last-time']
             await state.finish()
-            async with state.proxy() as data:
-                data['add-sugar-last-time'] = tmp
-    except Exception as e:
-        print(e)
+            data['add-sugar-last-time'] = tmp
+    except KeyError:
         await state.finish()
 
 @dp.message_handler(commands=['del'])
@@ -81,15 +52,16 @@ async def cancel(m: types.Message, state: FSMContext):
     """
     if m.text == "Відміна" or m.text == 'відміна' or 'cancel' in m.text:
         await finish_state(state)
-        await bot.send_message(m.from_user.id, messages.canceled, reply_markup=kb.main_keyboard)
+        await bot.send_message(m.from_user.id, messages.canceled, reply_markup=kb.main_keyboard_admin if user[m.from_user.id]['is_admin'] else kb.main_keyboard)
     else:
         pass
 
 
-
-
 @dp.message_handler(commands=['about'], state='*')
 async def send_about(m: types.Message, state: FSMContext):
+    print(user[m.from_user.id]['is_admin'])
+    print('1' if True else '0')
+    print('1' if False else '0')
     await bot.send_message(m.from_user.id, messages.about)
 
 
@@ -101,12 +73,12 @@ async def send_help(m: types.Message):
 @dp.message_handler(commands=['menu'])
 async def menu(m: types.Message, state: FSMContext):
     await finish_state(state)
-    await bot.send_message(m.from_user.id, 'Меню', reply_markup=kb.main_keyboard)
+    await bot.send_message(m.from_user.id, 'Меню', reply_markup=kb.main_keyboard_admin if user[m.from_user.id]['is_admin'] else kb.main_keyboard)
 
 
 @dp.message_handler(text='🔙 Назад')
 async def back_to_menu(m: types.Message):
-    await bot.send_message(m.from_user.id, 'Меню', reply_markup=kb.main_keyboard)
+    await bot.send_message(m.from_user.id, 'Меню', reply_markup=kb.main_keyboard_admin if user[m.from_user.id]['is_admin'] else kb.main_keyboard)
 
 
 @dp.message_handler(text='📊 Статистика')

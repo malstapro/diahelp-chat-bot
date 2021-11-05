@@ -2,3 +2,4 @@
 02.11.21 - Save sugar index system fix. Wait time between save sugar operations output update. TODO: Wait time between save sugar operations output fix(03.11.21)
 03.11.21 - Wait time between save sugar operations output fixed. TODO: Save sugar index system fix (database) (04.11.21)
 04.11.21 - Save sugar index system (database) fixed. New finish state system added
+05.11.21 - Mailing system added. Project structure updated. TODO: Mailing system improve(type, schedule)

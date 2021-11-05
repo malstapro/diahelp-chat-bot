@@ -6,6 +6,11 @@ main_keyboard.row(KeyboardButton('📊 Статистика'), KeyboardButton('�
 main_keyboard.row(KeyboardButton('⚙ Налаштування'), KeyboardButton('ℹ Інформація'))
 
 
+main_keyboard_admin = ReplyKeyboardMarkup(resize_keyboard=True)
+main_keyboard_admin.row(KeyboardButton('📊 Статистика'), KeyboardButton('🍬 Цукор'), KeyboardButton('🍎 Їжа'))
+main_keyboard_admin.row(KeyboardButton('⚙ Налаштування'), KeyboardButton('ℹ Інформація'), KeyboardButton('📬 Розсилання'))
+
+
 sugar = ReplyKeyboardMarkup(resize_keyboard=True)
 sugar.row(KeyboardButton('➕ Додати показник'))
 sugar.row(KeyboardButton('🔘 Середній показник'), KeyboardButton('🔘 Усі показники'))

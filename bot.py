@@ -5,6 +5,7 @@ from aiogram.utils import executor
 from modules.callbacks import dp
 from modules.registration import dp
 from modules.settings import dp
+from modules.mailing import dp
 
 
 def repeat(coro, loop):
