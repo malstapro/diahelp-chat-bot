@@ -364,7 +364,7 @@ async def food_search(m: types.Message, state: FSMContext):
         for food in food_list:
             if fuzz.token_sort_ratio(food_name, food) >= 90:
                 find = True
-                await m.answer(f'{food_list[food][0]},{food_list[food][1]}')
+                await m.answer(f'Кількість на 1 ХО - {food_list[food][0]}\nВага, об\'єм на 1 ХО{food_list[food][1]}')
                 await finish_state(state)
         if not find:
             await m.answer(messages.food_not_matched)
