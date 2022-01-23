@@ -1,18 +1,22 @@
+import asyncio
+from datetime import datetime, timedelta
+import json
+
+import pytz
+from thefuzz import fuzz
 from aiogram import Bot, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import Dispatcher, FSMContext
 from aiogram.types import ParseMode
 from loguru import logger
-import asyncio
-from datetime import datetime, timedelta
-import pytz
-# import matplotlib.pyplot as plt
 
-from modules import keyboards as kb
-from modules import database as db
 from modules import credentials
+from modules import database as db
+from modules import keyboards as kb
 from modules import messages
-from modules.states import Sugar, Settings, Rating, Convert
+from modules.states import Sugar, Settings, Rating, Convert, FoodSearch
+
+# import matplotlib.pyplot as plt
 
 bot = Bot(token=credentials.TOKEN)
 dp = Dispatcher(bot, storage=MemoryStorage())
@@ -34,27 +38,35 @@ async def finish_state(state: FSMContext):
         async with state.proxy() as data:
             data['add-sugar-last-time'] = tmp
     except Exception as e:
-        logger.error(e.__class__.__name__ + ': ' + str(e))
-        await state.finish()
+        if e.__class__.__name__ + ': ' + str(e) == 'KeyError: \'add-sugar-last-time\'':
+            pass
+        else:
+            logger.error(e.__class__.__name__ + ': ' + str(e))
+            await state.finish()
+
 
 @dp.message_handler(commands=['del'])
 async def delete_user(m: types.Message):
     try:
         user[m.from_user.id].delete()
         sugar[m.from_user.id].delete()
-        await bot.send_message(m.from_user.id, "Користувач успішно видален з бази даних!", reply_markup=types.ReplyKeyboardRemove())
+        await bot.send_message(m.from_user.id, "Користувач успішно видален з бази даних!",
+                               reply_markup=types.ReplyKeyboardRemove())
     except Exception as e:
         logger.error(e)
 
 
-@dp.message_handler(lambda d: d.text == "Відміна" or d.text == 'відміна' or d.text == 'cancel' or d.text == '/cancel', state="*")
+@dp.message_handler(lambda d: d.text == "Відміна" or d.text == 'відміна' or d.text == 'cancel' or d.text == '/cancel',
+                    state="*")
 async def cancel(m: types.Message, state: FSMContext):
     """
     Ця функція закінчує будь-який діалог з користувачем
     """
     if m.text == "Відміна" or m.text == 'відміна' or 'cancel' in m.text:
         await finish_state(state)
-        await bot.send_message(m.from_user.id, messages.canceled, reply_markup=kb.main_keyboard_admin if user[m.from_user.id]['is_admin'] else kb.main_keyboard)
+        await bot.send_message(m.from_user.id, messages.canceled,
+                               reply_markup=kb.main_keyboard_admin if user[m.from_user.id][
+                                   'is_admin'] else kb.main_keyboard)
     else:
         pass
 
@@ -69,24 +81,28 @@ async def send_about(m: types.Message, state: FSMContext):
 
 @dp.message_handler(commands=['help'], state='*')
 async def send_help(m: types.Message):
-    await bot.send_message(m.from_user.id, messages._help, reply_markup=kb.author, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
+    await bot.send_message(m.from_user.id, messages._help, reply_markup=kb.author, parse_mode=ParseMode.MARKDOWN,
+                           disable_web_page_preview=True)
 
 
 @dp.message_handler(commands=['menu'])
 async def menu(m: types.Message, state: FSMContext):
     await finish_state(state)
-    await bot.send_message(m.from_user.id, 'Меню', reply_markup=kb.main_keyboard_admin if user[m.from_user.id]['is_admin'] else kb.main_keyboard)
+    await bot.send_message(m.from_user.id, 'Меню', reply_markup=kb.main_keyboard_admin if user[m.from_user.id][
+        'is_admin'] else kb.main_keyboard)
 
 
 @dp.message_handler(text='🔙 Назад')
 async def back_to_menu(m: types.Message):
-    await bot.send_message(m.from_user.id, 'Меню', reply_markup=kb.main_keyboard_admin if user[m.from_user.id]['is_admin'] else kb.main_keyboard)
+    await bot.send_message(m.from_user.id, 'Меню', reply_markup=kb.main_keyboard_admin if user[m.from_user.id][
+        'is_admin'] else kb.main_keyboard)
 
 
 @dp.message_handler(text='📊 Статистика')
 async def statistics(m: types.Message):
     try:
-        await bot.send_message(m.from_user.id, 'Функція виводу статистики зараз не працює. Якщо у вас виникли питання зверниться до розробника @tesla33io')
+        await bot.send_message(m.from_user.id,
+                               'Функція виводу статистики зараз не працює. Якщо у вас виникли питання зверниться до розробника @tesla33io')
         # sugars = sugar[m.from_user.id]['sugars'][f'{datetime.now().year}'][f'{datetime.now().month}'][f'{datetime.now().day}']
         # time_list = []
         # index_list = []
@@ -102,20 +118,27 @@ async def statistics(m: types.Message):
 
 @dp.message_handler(text='🍬 Цукор')
 async def sugar_processing(m: types.Message):
-    await bot.send_message(m.from_user.id, messages.accessible_sugar, reply_markup=kb.sugar, parse_mode=ParseMode.MARKDOWN)
+    await bot.send_message(m.from_user.id, messages.accessible_sugar, reply_markup=kb.sugar,
+                           parse_mode=ParseMode.MARKDOWN)
 
 
 @dp.message_handler(text='➕ Додати показник')
 async def save_index(m: types.Message, state: FSMContext):
     async with state.proxy() as data:
         try:
-            if (timedelta(minutes=5) - (datetime.now(tz=pytz.timezone("Europe/Kiev")) - data['add-sugar-last-time'])) <= timedelta(minutes=0, seconds=0):
+            if (timedelta(minutes=5) - (
+                    datetime.now(tz=pytz.timezone("Europe/Kiev")) - data['add-sugar-last-time'])) <= timedelta(
+                    minutes=0, seconds=0):
                 await Sugar.add_to_db.set()
                 _min = "81.08" if user[m.from_user.id]['units'] == 'units_mg' else "4.5"
                 await bot.send_message(m.from_user.id, messages.send_sugar.format(_min), parse_mode=ParseMode.MARKDOWN)
             else:
-                wait_time = timedelta(minutes=5) - (datetime.now(tz=pytz.timezone("Europe/Kiev")) - data['add-sugar-last-time'])
-                await bot.send_message(m.from_user.id, messages.waite_add_sugar.format(f'{str(wait_time).split(":")[1]}:{str(wait_time).split(":")[2].split(".")[0]}', 'хвилини' if wait_time > timedelta(minutes=2) else 'хвилину' if wait_time > timedelta(minutes=1) else 'секунд'), parse_mode=ParseMode.MARKDOWN)
+                wait_time = timedelta(minutes=5) - (
+                            datetime.now(tz=pytz.timezone("Europe/Kiev")) - data['add-sugar-last-time'])
+                await bot.send_message(m.from_user.id, messages.waite_add_sugar.format(
+                    f'{str(wait_time).split(":")[1]}:{str(wait_time).split(":")[2].split(".")[0]}',
+                    'хвилини' if wait_time > timedelta(minutes=2) else 'хвилину' if wait_time > timedelta(
+                        minutes=1) else 'секунд'), parse_mode=ParseMode.MARKDOWN)
         except KeyError:
             await Sugar.add_to_db.set()
             _min = "81.08" if user[m.from_user.id]['units'] == 'units_mg' else "4.5"
@@ -142,18 +165,35 @@ async def add_to_db(m: types.Message, state: FSMContext):
             _min = 1
         if (index >= _min) and (index <= _max):
             try:
-                sugar[m.from_user.id]['sugars'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).year}'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).month}'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).day}'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).hour}-{datetime.now(tz=pytz.timezone("Europe/Kiev")).minute}'] = str(index)
+                sugar[m.from_user.id]['sugars'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).year}'][
+                    f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).month}'][
+                    f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).day}'][
+                    f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).hour}-{datetime.now(tz=pytz.timezone("Europe/Kiev")).minute}'] = str(
+                    index)
                 sugar[m.from_user.id].commit()
             except:
                 try:
-                    sugar[m.from_user.id]['sugars'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).year}'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).month}'].update({f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).day}': {f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).hour}-{datetime.now(tz=pytz.timezone("Europe/Kiev")).minute}': str(index)}})
+                    sugar[m.from_user.id]['sugars'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).year}'][
+                        f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).month}'].update({
+                                                                                             f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).day}': {
+                                                                                                 f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).hour}-{datetime.now(tz=pytz.timezone("Europe/Kiev")).minute}': str(
+                                                                                                     index)}})
                     sugar[m.from_user.id].commit()
                 except:
                     try:
-                        sugar[m.from_user.id]['sugars'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).year}'].update({f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).month}': {f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).day}': {f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).hour}-{datetime.now(tz=pytz.timezone("Europe/Kiev")).minute}': str(index)}}})
+                        sugar[m.from_user.id]['sugars'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).year}'].update(
+                            {f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).month}': {
+                                f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).day}': {
+                                    f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).hour}-{datetime.now(tz=pytz.timezone("Europe/Kiev")).minute}': str(
+                                        index)}}})
                         sugar[m.from_user.id].commit()
                     except:
-                        sugar[m.from_user.id]['sugars'].update({f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).year}': {f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).month}': {f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).day}': {f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).hour}-{datetime.now(tz=pytz.timezone("Europe/Kiev")).minute}': str(index)}}}})
+                        sugar[m.from_user.id]['sugars'].update({
+                                                                   f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).year}': {
+                                                                       f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).month}': {
+                                                                           f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).day}': {
+                                                                               f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).hour}-{datetime.now(tz=pytz.timezone("Europe/Kiev")).minute}': str(
+                                                                                   index)}}}})
                         sugar[m.from_user.id].commit()
             await bot.send_message(m.from_user.id, messages.index_saved)
             if units and index <= 72.07:
@@ -167,7 +207,8 @@ async def add_to_db(m: types.Message, state: FSMContext):
             async with state.proxy() as data:
                 data['add-sugar-last-time'] = datetime.now(tz=pytz.timezone("Europe/Kiev"))
         else:
-            hint = "_Мінімальний показник для одиниць вимірювання_ *мг/дл* - _18.02, максимальний показник - 630.63_" if user[m.from_user.id]['units'] == 'units_mg' \
+            hint = "_Мінімальний показник для одиниць вимірювання_ *мг/дл* - _18.02, максимальний показник - 630.63_" if \
+            user[m.from_user.id]['units'] == 'units_mg' \
                 else "_Мінімальний показник для одиниць вимірювання_ *ммоль/л* - _1.0, максимальний показник - 35.0_"
             await bot.send_message(m.from_user.id, messages.to_big_value.format(hint), parse_mode=ParseMode.MARKDOWN)
             await asyncio.sleep(3)
@@ -187,6 +228,7 @@ async def add_to_db(m: types.Message, state: FSMContext):
             await bot.send_message(m.from_user.id, messages.value_error, parse_mode=ParseMode.MARKDOWN)
             await asyncio.sleep(3)
             await bot.send_message(m.from_user.id, messages.send_sugar.format(_min), parse_mode=ParseMode.MARKDOWN)
+
 
 @dp.message_handler(text='🔘 Середній показник')
 async def middle_sugar_choice(m: types.Message):
@@ -217,13 +259,15 @@ async def middle_sugar_processing(q: types.CallbackQuery, state: FSMContext):
                 for i in result:
                     middle_sugar_all_day += i
                 middle_sugar_day = '{:.1f}'.format(middle_sugar_all_day / len(result))
-                await bot.send_message(q.from_user.id, messages.mid_sug_day.format(middle_sugar_day), parse_mode=ParseMode.MARKDOWN)
+                await bot.send_message(q.from_user.id, messages.mid_sug_day.format(middle_sugar_day),
+                                       parse_mode=ParseMode.MARKDOWN)
             elif q.data == 'midsug_month':
                 middle_sugar_all_month = 0
                 for i in result:
                     middle_sugar_all_month += i
                 middle_sugar_month = '{:.1f}'.format(middle_sugar_all_month / len(result))
-                await bot.send_message(q.from_user.id, messages.mid_sug_day.format(middle_sugar_month), parse_mode=ParseMode.MARKDOWN)
+                await bot.send_message(q.from_user.id, messages.mid_sug_day.format(middle_sugar_month),
+                                       parse_mode=ParseMode.MARKDOWN)
             await finish_state(state)
         except Exception as e:
             await finish_state(state)
@@ -249,19 +293,26 @@ async def all_sugar(q: types.CallbackQuery, state: FSMContext):
         now_year = datetime.now(tz=pytz.timezone("Europe/Kiev")).year
         _all = sugar[q.from_user.id]['sugars']
         if q.data == 'midsug_day':
-            day_sugars = sugar[q.from_user.id]['sugars'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).year}'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).month}'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).day}']
+            day_sugars = sugar[q.from_user.id]['sugars'][f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).year}'][
+                f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).month}'][
+                f'{datetime.now(tz=pytz.timezone("Europe/Kiev")).day}']
             for sug in day_sugars:
-                result.append(f'🔸 {str(sug).replace("-",":")} - {day_sugars[sug]}')
+                result.append(f'🔸 {str(sug).replace("-", ":")} - {day_sugars[sug]}')
             async with state.proxy() as data:
-                await bot.edit_message_text(messages.all_sug.format(f'сьогодні ({now_day if len(str(now_day)) > 1 else "0" + str(now_day)}.{now_month if len(str(now_month)) > 1 else "0" + str(now_month)})', '\n'.join(str(a) for a in result)), q.from_user.id, data['all_sug_msg'])
+                await bot.edit_message_text(messages.all_sug.format(
+                    f'сьогодні ({now_day if len(str(now_day)) > 1 else "0" + str(now_day)}.{now_month if len(str(now_month)) > 1 else "0" + str(now_month)})',
+                    '\n'.join(str(a) for a in result)), q.from_user.id, data['all_sug_msg'])
             await finish_state(state)
         elif q.data == 'midsug_month':
             mon_sugars = sugar[q.from_user.id]['sugars'][f'{datetime.now().year}'][f'{datetime.now().month}']
             for day in mon_sugars:
                 for sug in mon_sugars[str(day)]:
-                    result.append(f'🔸 {datetime.now(tz=pytz.timezone("Europe/Kiev")).month}.{day} - {str(sug).replace("-",":")} - {mon_sugars[str(day)][sug]}')
+                    result.append(
+                        f'🔸 {datetime.now(tz=pytz.timezone("Europe/Kiev")).month}.{day} - {str(sug).replace("-", ":")} - {mon_sugars[str(day)][sug]}')
             async with state.proxy() as data:
-                await bot.edit_message_text(messages.all_sug.format(f'цей місяць ({now_month if len(str(now_month)) > 1 else "0" + str(now_month)}.{now_year})', '\n'.join(str(a) for a in result)), q.from_user.id, data['all_sug_msg'])
+                await bot.edit_message_text(messages.all_sug.format(
+                    f'цей місяць ({now_month if len(str(now_month)) > 1 else "0" + str(now_month)}.{now_year})',
+                    '\n'.join(str(a) for a in result)), q.from_user.id, data['all_sug_msg'])
             await finish_state(state)
     except Exception as e:
         await finish_state(state)
@@ -296,28 +347,44 @@ async def moll_to_mg_result(m: types.Message, state: FSMContext):
     await finish_state(state)
 
 
-# @dp.message_handler(text='🍎 Їжа')
-# async def food(m: types.Message, state: FSMContext):
-#     await FoodSearch.search.set()
-#     await bot.send_message(m.from_user.id, messages.select_food)
+@dp.message_handler(text='🍎 Їжа')
+async def food(m: types.Message, state: FSMContext):
+    await FoodSearch.search.set()
+    await bot.send_message(m.from_user.id, messages.select_food)
 
 
-# @dp.message_handler(state=FoodSearch.search)
-# async def food_search(m: types.Message, state: FSMContext):
-#     name = m.text
-#     for i in food[1]:
-#
+@dp.message_handler(state=FoodSearch.search)
+async def food_search(m: types.Message, state: FSMContext):
+    food_name = m.text
+    find = False
+    try:
+        with open('./data/food_data.json', 'r') as json_file:
+            data = json.load(json_file)
+            food_list = data['data']
+        for food in food_list:
+            if fuzz.token_sort_ratio(food_name, food) >= 90:
+                find = True
+                await m.answer(f'{food_list[food][0]},{food_list[food][1]}')
+                await finish_state(state)
+        if not find:
+            await m.answer(messages.food_not_matched)
+            await finish_state(state)
+    except Exception as e:
+        await finish_state(state)
+        logger.error(e.__class__.__name__ + ': ' + str(e))
 
 
 @dp.message_handler(text='⚙ Налаштування')
 async def settings_processing(m: types.Message):
-    await bot.send_message(m.from_user.id, messages.accessible_settings, reply_markup=kb.settings, parse_mode=ParseMode.MARKDOWN)
+    await bot.send_message(m.from_user.id, messages.accessible_settings, reply_markup=kb.settings,
+                           parse_mode=ParseMode.MARKDOWN)
 
 
 @dp.message_handler(text='🗑 Видалити показники цукру')
 async def clear_sugar_processing(m: types.Message):
     await Settings.clear_sugar_confirm.set()
-    await bot.send_message(m.from_user.id, messages.settings_clear_sug_conf, reply_markup=kb.confirm, parse_mode=ParseMode.MARKDOWN)
+    await bot.send_message(m.from_user.id, messages.settings_clear_sug_conf, reply_markup=kb.confirm,
+                           parse_mode=ParseMode.MARKDOWN)
 
 
 @dp.callback_query_handler(state=Settings.clear_sugar_confirm)
@@ -341,7 +408,8 @@ async def clear_sugar(q: types.CallbackQuery, state: FSMContext):
 @dp.message_handler(text='🔄 Змінити одиниці вимірювання')
 async def change_units_processing(m: types.Message):
     await Settings.change_units_confirm.set()
-    await bot.send_message(m.from_user.id, messages.units_change_warn, reply_markup=kb.confirm, parse_mode=ParseMode.MARKDOWN)
+    await bot.send_message(m.from_user.id, messages.units_change_warn, reply_markup=kb.confirm,
+                           parse_mode=ParseMode.MARKDOWN)
 
 
 @dp.callback_query_handler(state=Settings.change_units_confirm)
@@ -382,12 +450,14 @@ async def change_units(q: types.CallbackQuery, state: FSMContext):
 
 @dp.message_handler(text='ℹ Інформація')
 async def information(m: types.Message):
-    await bot.send_message(m.from_user.id, messages.accessible_info, reply_markup=kb.info, parse_mode=ParseMode.MARKDOWN)
+    await bot.send_message(m.from_user.id, messages.accessible_info, reply_markup=kb.info,
+                           parse_mode=ParseMode.MARKDOWN)
 
 
 @dp.message_handler(text='👤 Творець')
 async def author(m: types.Message):
-    await bot.send_message(m.from_user.id, messages.author, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
+    await bot.send_message(m.from_user.id, messages.author, parse_mode=ParseMode.MARKDOWN,
+                           disable_web_page_preview=True)
 
 
 @dp.message_handler(text='⭐ Оцінити бота')
@@ -401,7 +471,9 @@ async def send_rating(q: types.CallbackQuery, state: FSMContext):
     await q.answer()
     try:
         id = 614259495
-        await bot.send_message(id, messages.rating_to_developer.format(q.from_user.username, q.data, str(datetime.now())), parse_mode=ParseMode.MARKDOWN)
+        await bot.send_message(id,
+                               messages.rating_to_developer.format(q.from_user.username, q.data, str(datetime.now())),
+                               parse_mode=ParseMode.MARKDOWN)
         await bot.send_message(q.from_user.id, messages.rating_ty)
         await finish_state(state)
     except Exception as e:
@@ -411,4 +483,5 @@ async def send_rating(q: types.CallbackQuery, state: FSMContext):
 
 @dp.message_handler(text='🆘 Допомога')
 async def send_help(m: types.Message):
-    await bot.send_message(m.from_user.id, messages.sos, reply_markup=kb.author, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
+    await bot.send_message(m.from_user.id, messages.sos, reply_markup=kb.author, parse_mode=ParseMode.MARKDOWN,
+                           disable_web_page_preview=True)
