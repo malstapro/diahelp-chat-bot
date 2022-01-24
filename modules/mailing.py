@@ -1,7 +1,8 @@
+import aiogram.utils.exceptions
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.types import ContentType
-from modules.callbacks import bot, dp, user, finish_state
+from modules.callbacks import bot, dp, user, finish_state, logger
 from modules import messages
 from modules.states import Mailing
 
@@ -19,6 +20,9 @@ async def check_admin(m: types.Message):
 async def mailing(m: types.Message, state: FSMContext):
     users = user[m.from_user.id].load()
     for i in range(len(users)):
-        user_id = users[i]['_id']
-        await m.send_copy(user_id)
+        try:
+            user_id = users[i]['_id']
+            await m.send_copy(user_id)
+        except aiogram.utils.exceptions.BotBlocked:
+            await finish_state(state)
     await finish_state(state)
