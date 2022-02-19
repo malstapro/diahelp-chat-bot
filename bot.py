@@ -2,10 +2,14 @@ import asyncio
 
 from aiogram.utils import executor
 
-from modules.callbacks import dp
-from modules.registration import dp
-from modules.settings import dp
-from modules.mailing import dp
+from modules.handlers.mailing import dp
+from modules.handlers.sugar import dp
+from modules.handlers.info import dp
+from modules.handlers.food import dp
+from modules.handlers.statistics import dp
+from modules.handlers.settings import dp
+from modules.handlers.commands import dp
+from modules.handlers.registration import dp
 
 
 def repeat(coro, loop):

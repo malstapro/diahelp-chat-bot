@@ -1,11 +1,8 @@
-from aiogram import Bot, types
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
-from aiogram.dispatcher import Dispatcher, FSMContext
+from aiogram import types
+from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.types import ParseMode
 from modules import keyboards as kb
-from modules import database as db
-from modules import credentials
 from modules import messages
 from modules.callbacks import bot, dp, user, sugar
 from datetime import datetime
