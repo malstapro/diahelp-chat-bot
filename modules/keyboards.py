@@ -56,3 +56,8 @@ rating.add(InlineKeyboardButton('⭐️⭐️⭐', callback_data='3'))
 rating.add(InlineKeyboardButton('⭐️⭐', callback_data='2'))
 rating.add(InlineKeyboardButton('⭐', callback_data='1'))
 
+
+mailing_time = InlineKeyboardMarkup()
+mailing_time.add(InlineKeyboardButton('Зараз', callback_data='now'))
+mailing_time.add(InlineKeyboardButton('Потім', callback_data='later'))
+

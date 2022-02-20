@@ -28,3 +28,6 @@ class FoodSearch(StatesGroup):
 
 class Mailing(StatesGroup):
     mailing = State()
+    now = State()
+    later = State()
+    later_set_time = State()

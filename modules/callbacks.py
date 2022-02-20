@@ -3,12 +3,14 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import Dispatcher, FSMContext
 from aiogram.types import ParseMode
 from loguru import logger
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from modules import credentials
 from modules import database as db
 from modules import keyboards as kb
 
 
+scheduler = AsyncIOScheduler()
 bot = Bot(token=credentials.TOKEN)
 dp = Dispatcher(bot, storage=MemoryStorage())
 user = db.DataBase('users', 'users', credentials.MONGO_TOKEN, '_id')

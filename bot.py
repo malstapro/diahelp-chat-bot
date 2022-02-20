@@ -10,6 +10,7 @@ from modules.handlers.statistics import dp
 from modules.handlers.settings import dp
 from modules.handlers.commands import dp
 from modules.handlers.registration import dp
+from modules.callbacks import scheduler
 
 
 def repeat(coro, loop):
@@ -19,5 +20,6 @@ def repeat(coro, loop):
 
 if __name__ == "__main__":
     # logging.info("BotStarted")
+    scheduler.start()
     loop = asyncio.get_event_loop()
     executor.start_polling(dp, skip_updates=True, loop=loop)
