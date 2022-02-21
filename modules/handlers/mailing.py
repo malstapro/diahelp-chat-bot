@@ -7,7 +7,7 @@ from aiogram.types import ContentType
 
 from modules import keyboards as kb
 from modules import messages
-from modules.callbacks import bot, dp, user, finish_state, scheduler
+from modules.callbacks import bot, dp, user, finish_state, scheduler, mailing_time
 from modules.states import Mailing
 
 
@@ -34,6 +34,8 @@ async def choice_mailing(q: types.CallbackQuery, state: FSMContext):
 @dp.message_handler(state=Mailing.later_set_time)
 async def mailing_time_set(m: types.Message, state: FSMContext):
     async with state.proxy() as data:
+        mailing_time[m.text] = {'sent': False}
+        mailing_time[m.text].commit()
         data['time'] = m.text.split(':')
     await m.answer(messages.send_mailing_msg)
     await Mailing.later.set()
@@ -48,13 +50,13 @@ async def do_mailing_later(m: types.Message, state: FSMContext):
         except aiogram.utils.exceptions.BotBlocked:
             await finish_state(state)
     await finish_state(state)
-    return
 
 
 @dp.message_handler(state=Mailing.later, content_types=[ContentType.TEXT, ContentType.PHOTO, ContentType.VIDEO, ContentType.VIDEO_NOTE, ContentType.AUDIO, ContentType.VOICE])
 async def mailing_later(m: types.Message, state: FSMContext):
     async with state.proxy() as data:
         scheduler.add_job(do_mailing_later, 'cron', start_date=datetime.now(), day=data['time'][0], hour=data['time'][1], minute=data['time'][2], args=(m, state,))
+    await finish_state(state)
 
 
 @dp.message_handler(state=Mailing.now, content_types=[ContentType.TEXT, ContentType.PHOTO, ContentType.VIDEO, ContentType.VIDEO_NOTE, ContentType.AUDIO, ContentType.VOICE])

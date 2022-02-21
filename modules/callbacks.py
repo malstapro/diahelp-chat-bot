@@ -4,17 +4,19 @@ from aiogram.dispatcher import Dispatcher, FSMContext
 from aiogram.types import ParseMode
 from loguru import logger
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+import pytz
 
 from modules import credentials
 from modules import database as db
 from modules import keyboards as kb
 
 
-scheduler = AsyncIOScheduler()
+scheduler = AsyncIOScheduler(timezone=pytz.timezone("Europe/Kiev"))
 bot = Bot(token=credentials.TOKEN)
 dp = Dispatcher(bot, storage=MemoryStorage())
 user = db.DataBase('users', 'users', credentials.MONGO_TOKEN, '_id')
 sugar = db.DataBase('sugars', 'sugars', credentials.MONGO_TOKEN, '_id')
+mailing_time = db.DataBase('mailing_time', 'time', credentials.MONGO_TOKEN, '_id')
 food = db.DataBase('food', 'food', credentials.MONGO_TOKEN, '_id')
 logger.add("diahelpbot.log", format="[{time}] ({level}) - {message}", level="INFO")
 dt_format = "%m/%d/%Y/%H/%M/%S"
