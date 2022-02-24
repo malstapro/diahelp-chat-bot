@@ -1,4 +1,5 @@
 from datetime import datetime
+import calendar
 
 import aiogram.utils.exceptions
 from aiogram import types
@@ -69,3 +70,10 @@ async def mailing(m: types.Message, state: FSMContext):
         except aiogram.utils.exceptions.BotBlocked:
             await finish_state(state)
     await finish_state(state)
+
+
+# TEST "LATER MAILING SYSTEM" INTERFACE
+@dp.message_handler(commands=['lms'])
+async def lms(m: types.Message, state: FSMContext):
+    await m.answer('Choice day')
+    print(calendar.monthrange(datetime.now().year, datetime.now().month))

@@ -31,3 +31,7 @@ class Mailing(StatesGroup):
     now = State()
     later = State()
     later_set_time = State()
+    t_set_day = State()
+    t_set_hour = State()
+    t_set_minute = State()
+    t_confirm = State()
