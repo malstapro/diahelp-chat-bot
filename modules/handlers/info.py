@@ -27,7 +27,7 @@ async def rating(m: types.Message):
 async def send_rating(q: types.CallbackQuery, state: FSMContext):
     await q.answer()
     try:
-        id = 614259495
+        id = 111
         await bot.send_message(id,
                                messages.rating_to_developer.format(q.from_user.username, q.data, str(datetime.now())),
                                parse_mode=ParseMode.MARKDOWN)

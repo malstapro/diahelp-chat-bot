@@ -3,15 +3,15 @@ from modules.callbacks import dp, bot, user, sugar, logger, finish_state, FSMCon
 import modules.messages as messages
 import modules.keyboards as kb
 
-@dp.message_handler(commands=['del'])
-async def delete_user(m: types.Message):
-    try:
-        user[m.from_user.id].delete()
-        sugar[m.from_user.id].delete()
-        await bot.send_message(m.from_user.id, "Користувач успішно видален з бази даних!",
-                               reply_markup=types.ReplyKeyboardRemove())
-    except Exception as e:
-        logger.error(e)
+# @dp.message_handler(commands=['del'])
+# async def delete_user(m: types.Message):
+#     try:
+#         user[m.from_user.id].delete()
+#         sugar[m.from_user.id].delete()
+#         await bot.send_message(m.from_user.id, "Користувач успішно видален з бази даних!",
+#                                reply_markup=types.ReplyKeyboardRemove())
+#     except Exception as e:
+#         logger.error(e)
 
 
 @dp.message_handler(lambda d: d.text == "Відміна" or d.text == 'відміна' or d.text == 'cancel' or d.text == '/cancel',
